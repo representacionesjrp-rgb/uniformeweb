@@ -475,3 +475,4 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
   .tx-fotos { position: static; }
   .tx-foto { aspect-ratio: auto; max-height: 55vh; }
 }
+.tx-nota-tallas { color: var(--suave); font-size: .8rem; margin: 8px 0 0; }

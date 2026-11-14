@@ -28,11 +28,17 @@
   // Estado de una talla: "D", "U", "A" o "P dd-mm-aaaa".
   function estado(v) {
     var k = String(v || "A").charAt(0);
-    var e = ESTADOS[k] || ESTADOS.A;
-    return { clase: e[0], texto: k === "P" && v.length > 2 ? "Llega el " + v.slice(2) : e[1], k: k };
+    var e = ESTADOS[k] || ESTADOS.A, texto = e[1];
+    if (k === "P") {
+      // "P dd-mm-aaaa": si la fecha ya pasó, se muestra solo "Próximamente".
+      var f = String(v).slice(2).split("-");
+      if (f.length === 3 && new Date(+f[2], +f[1] - 1, +f[0], 23, 59) >= new Date()) texto = "Llega el " + f[0] + "-" + f[1];
+    }
+    return { clase: e[0], texto: texto, k: k };
   }
   // Disponibilidad general del producto (o de un color).
   function resumen(p, color) {
+    if (p.disp === "A") return estado("A");
     var tallas = [];
     if (p.det) Object.keys(p.det).forEach(function (c) {
       if (!color || c === color) Object.keys(p.det[c]).forEach(function (t) { tallas.push(String(p.det[c][t]).charAt(0)); });
@@ -187,9 +193,10 @@
     var t = caja.querySelector(".tx-tallas"), det = p.det && (p.det[colorSel] || p.det[Object.keys(p.det)[0]]);
     if (det && Object.keys(det).length) {
       t.innerHTML = "<h3>Tallas" + (colorSel ? " en " + esc(colorSel.toLowerCase()) : "") + "</h3><ul>" + Object.keys(det).map(function (talla) {
-        var e = estado(det[talla]);
+        var e = estado(p.disp === "A" ? "A" : det[talla]);
         return '<li class="tx-' + e.clase + '" title="' + esc(e.texto) + '"><b>' + esc(talla) + "</b><span>" + esc(e.texto) + "</span></li>";
-      }).join("") + "</ul>";
+      }).join("") + "</ul>" +
+        (p.detFecha && p.detFecha < String(DATA.actualizado).slice(0, 10) ? '<p class="tx-nota-tallas">Disponibilidad por talla al ' + fecha(p.detFecha + "T12:00:00") + '. Te confirmamos el stock al cotizar.</p>' : "");
     } else {
       var r = resumen(p);
       t.innerHTML = '<span class="tx-estado tx-' + r.clase + '">' + esc(r.texto) + "</span>";

@@ -185,6 +185,8 @@ async function product(item) {
       await sleep(150);
     }
     if (vals.length < 2 || cimg.every((x) => x.join() === cimg[0].join())) cimg = undefined;
+    // Si Texora no entregó ninguna talla (sesión sin permisos de distribuidor), no hay detalle.
+    if (det && Object.values(det).every((t) => !Object.keys(t).length)) det = undefined;
   }
   const desc = firstSentence(strip(p.description_short));
   return {
@@ -202,6 +204,7 @@ async function product(item) {
     colores: colors,
     cimg,
     det,
+    detFecha: det ? new Date().toISOString().slice(0, 10) : undefined,
     guia,
     ficha,
   };
@@ -259,8 +262,11 @@ async function main() {
   if (!LOGGED && fs.existsSync(path)) {
     try {
       const prev = JSON.parse(fs.readFileSync(path, 'utf8').replace(/^window\.TEXORA=/, '').replace(/;\s*$/, ''));
-      const old = new Map(prev.productos.map((p) => [p.id, p.det]));
-      for (const p of ok) if (!p.det && old.get(p.id)) p.det = old.get(p.id);
+      const old = new Map(prev.productos.map((p) => [p.id, p]));
+      for (const p of ok) {
+        const o = old.get(p.id);
+        if (!p.det && o && o.det) { p.det = o.det; p.detFecha = o.detFecha; }
+      }
     } catch (e) { console.log('No se pudo leer el catálogo anterior:', e.message); }
   }
   const out = { actualizado: new Date().toISOString(), fuente: 'texora.cl', total: ok.length, productos: ok };
