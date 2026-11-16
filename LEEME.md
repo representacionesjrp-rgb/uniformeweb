@@ -23,7 +23,7 @@ Hoy las fotos se cargan desde el servidor de imágenes de Wix (siguen funcionand
 
 ## Formulario de cotización
 
-Usa FormSubmit (gratis, sin cuenta): las solicitudes llegan a `cotizaciones@uniformeweb.cl` (se cambia en `correoFormularios` de `config.js`). **La primera vez** que alguien envíe el formulario, FormSubmit mandará un correo de activación a esa casilla: hay que hacer clic en "Activate". También hay un botón para enviar la misma solicitud por WhatsApp.
+Usa FormSubmit (gratis, sin cuenta): las solicitudes llegan a `ventas@uniformeweb.cl` (se cambia en `correoFormularios` de `config.js`). **La primera vez** que alguien envíe el formulario, FormSubmit mandará un correo de activación a esa casilla: hay que hacer clic en "Activate". También hay un botón para enviar la misma solicitud por WhatsApp.
 
 ## Publicar gratis
 
