@@ -11,7 +11,7 @@ window.UW = {
   /* ---------- CONTACTO ---------- */
   correo: "cotizaciones@uniformeweb.cl",
   // Correo donde llegan las solicitudes de los formularios.
-  correoFormularios: "cotizaciones@uniformeweb.cl",
+  correoFormularios: "ventas@uniformeweb.cl",
   // Número para los botones de WhatsApp: solo dígitos, con 56 al inicio.
   whatsapp: "56977235026",
   // Cómo se muestra el número en pantalla.
