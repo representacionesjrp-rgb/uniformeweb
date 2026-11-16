@@ -64,3 +64,25 @@ Si en NIC Chile los "servidores de nombre" apuntan a Wix (`ns*.wixdns.net`), los
 - Hosting: $0 (GitHub Pages / Cloudflare Pages / Netlify).
 - Formulario: $0 (FormSubmit).
 - Solo se mantiene el pago anual del dominio en NIC Chile.
+
+## Productos de Texora (se actualizan solos)
+
+Las páginas de categoría muestran, antes de las fotos, los **modelos de Texora** con su ficha técnica, fotos por color,
+colores, tallas, guía de tallas, ficha en PDF y disponibilidad. Al tocar un modelo se abre su ficha con los botones
+"Cotizar por WhatsApp" y "Agregar a mi cotización" (lo suma al formulario del pie). Cada ficha tiene su propio enlace
+(por ejemplo `poleras.html#p-736`) para compartirla.
+
+| Archivo | Qué hace |
+|---|---|
+| `data/texora.js` | Productos y disponibilidad. **Se genera solo**, no lo edite a mano. |
+| `scripts/sync-texora.mjs` | Lee texora.cl y regenera `data/texora.js`. Al inicio están las reglas que deciden en qué página va cada producto (`pagina`) y cuáles se ocultan (`EXCLUDE_IDS`). |
+| `assets/js/texora.js` | Muestra los modelos y la ficha en el sitio. |
+| `.github/workflows/sync-texora.yml` | Ejecuta la sincronización todos los días a las 07:15. |
+| `cloudflare/` | Intermediario para que GitHub pueda leer Texora (ver `cloudflare/LEEME.md`). |
+
+- La disponibilidad se muestra como **Disponible**, **Últimas unidades** (menos de 20 por talla), **Agotado** o **Llega el …**.
+  Las cantidades exactas de Texora no se publican, porque este repositorio es público.
+- Sin la cuenta de distribuidor de Texora configurada, la actualización diaria solo renueva la disponibilidad total de cada
+  producto y conserva la última disponibilidad por talla conocida.
+- Las fotos, guías de tallas y fichas PDF se cargan directamente desde texora.cl.
+- Para actualizar a mano (Node 18 o superior): `node scripts/sync-texora.mjs`
