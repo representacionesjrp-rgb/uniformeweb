@@ -99,6 +99,6 @@ Cada visitante arma su propia cotización mientras navega, sin crear cuenta:
 
 **Vendedores:** abran el sitio una vez con `?vendedor=1` (por ejemplo `https://www.uniformeweb.cl/?vendedor=1`) y queda activo en ese navegador
 (`?vendedor=0` o el botón "Salir" lo apaga). Suma **Copiar resumen** y, si `cotizadorUrl` está configurado en `config.js`,
-**Abrir en el cotizador**, que manda los productos como `/cotizaciones?p=código|cantidad|detalle` (mismo formato que laropa.cl).
+**Abrir en el cotizador** (ventas.uniformeweb.cl), que manda los productos como `/cotizaciones?p=código|cantidad|detalle` (mismo formato que laropa.cl).
 
 Archivos: `assets/js/cotizador.js` y el bloque "Modo cotizador" al final de `assets/css/estilos.css`.

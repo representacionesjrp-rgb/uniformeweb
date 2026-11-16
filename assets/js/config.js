@@ -21,7 +21,7 @@ window.UW = {
      vendedores (sitio abierto con ?vendedor=1) ven "Abrir en el cotizador",
      que manda los productos como /cotizaciones?p=código|cantidad|detalle.
      Vacío = solo "Copiar resumen". */
-  cotizadorUrl: "",
+  cotizadorUrl: "https://ventas.uniformeweb.cl",
 
   mensajeWhatsapp: "Hola Uniformeweb, quiero cotizar ropa corporativa con logo.",
 
