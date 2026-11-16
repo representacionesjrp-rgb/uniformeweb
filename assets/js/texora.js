@@ -50,20 +50,54 @@
   }
 
   /* --- Tarjetas de la página ------------------------------------------- */
+  // Primera foto de un color (o la foto principal si el color no tiene fotos propias).
+  function fotoColor(p, i) {
+    var l = p.cimg && p.cimg[i] && p.cimg[i].length ? p.cimg[i] : p.img;
+    return l[0];
+  }
+  function detalle(p) {
+    var d = [];
+    if (p.spec && p.spec.Gramaje) d.push(p.spec.Gramaje.replace(/\s*gramos?/i, " g"));
+    if (p.spec && p.spec["Composición"]) d.push(p.spec["Composición"].split(/[.;]/)[0].trim());
+    return d.join(" · ");
+  }
   function tarjeta(p) {
-    var r = resumen(p);
-    var puntos = (p.colores || []).slice(0, 8).map(function (c) {
-      return '<i style="background:' + esc(c[1] || "#ccc") + '" title="' + esc(c[0]) + '"></i>';
+    var r = resumen(p), cols = p.colores || [], max = 7;
+    var puntos = cols.slice(0, max).map(function (c, i) {
+      return '<button type="button" class="tx-punto" data-c="' + i + '" aria-pressed="' + (i === 0) + '" aria-label="Ver en ' + esc(c[0]) + '" title="' + esc(c[0]) + '">' +
+        '<i style="background:' + esc(c[1] || "#ccc") + '"></i></button>';
     }).join("");
-    var mas = (p.colores || []).length > 8 ? '<small>+' + (p.colores.length - 8) + "</small>" : "";
-    return '<button type="button" class="tx-card" data-id="' + p.id + '">' +
-      '<span class="tx-card-img"><img loading="lazy" src="' + foto(p, p.img[0]) + '" alt="' + esc(p.nombre) + '"></span>' +
-      '<span class="tx-card-txt">' +
-        '<strong>' + esc(p.nombre) + "</strong>" +
-        '<small class="tx-cod">Cód. ' + esc(p.sku) + "</small>" +
-        (puntos ? '<span class="tx-puntos">' + puntos + mas + "</span>" : "") +
+    var mas = cols.length > max ? '<span class="tx-mas-colores">+' + (cols.length - max) + "</span>" : "";
+    var seg = p.img[1] && !(p.cimg && p.cimg[0] && p.cimg[0].length < 2) ? (p.cimg && p.cimg[0] ? p.cimg[0][1] : p.img[1]) : 0;
+    return '<article class="tx-card" data-id="' + p.id + '">' +
+      '<button type="button" class="tx-card-img tx-ver" aria-label="Ver ficha de ' + esc(p.nombre) + '">' +
+        '<img class="tx-img1" loading="lazy" src="' + foto(p, fotoColor(p, 0)) + '" alt="' + esc(p.nombre) + '">' +
+        (seg ? '<img class="tx-img2" loading="lazy" src="' + foto(p, seg) + '" alt="" aria-hidden="true">' : "") +
         '<span class="tx-estado tx-' + r.clase + '">' + esc(r.texto) + "</span>" +
-      "</span></button>";
+        (p.genero ? '<span class="tx-genero">' + esc(p.genero) + "</span>" : "") +
+      "</button>" +
+      '<div class="tx-card-txt">' +
+        '<h3><button type="button" class="tx-ver">' + esc(p.nombre) + "</button></h3>" +
+        '<p class="tx-cod">Cód. ' + esc(p.sku) + (detalle(p) ? " · " + esc(detalle(p)) : "") + "</p>" +
+        (puntos ? '<div class="tx-puntos">' + puntos + mas + '<span class="tx-color-actual">' + esc(cols[0][0]) + "</span></div>" : "") +
+        '<button type="button" class="tx-ver tx-ver-mas">Ver colores y tallas <span aria-hidden="true">→</span></button>' +
+      "</div></article>";
+  }
+  // Cambia la foto de la tarjeta al color elegido.
+  function colorTarjeta(card, p, i) {
+    card.setAttribute("data-color", i);
+    card.querySelectorAll(".tx-punto").forEach(function (b) { b.setAttribute("aria-pressed", +b.getAttribute("data-c") === i); });
+    var im = card.querySelector(".tx-img1"), src = foto(p, fotoColor(p, i));
+    if (im.getAttribute("src") !== src) {
+      im.classList.add("tx-cambiando");
+      var pre = new Image();
+      pre.onload = pre.onerror = function () { im.src = src; im.classList.remove("tx-cambiando"); };
+      pre.src = src;
+    }
+    var l = p.cimg && p.cimg[i] && p.cimg[i].length ? p.cimg[i] : p.img, im2 = card.querySelector(".tx-img2");
+    if (im2) { if (l[1]) { im2.src = foto(p, l[1]); im2.hidden = false; } else im2.hidden = true; }
+    var t = card.querySelector(".tx-color-actual");
+    if (t) t.textContent = p.colores[i][0];
   }
 
   function pagina() {
@@ -74,31 +108,40 @@
     if (!lista.length) return;
     var generos = [];
     lista.forEach(function (p) { if (p.genero && generos.indexOf(p.genero) < 0) generos.push(p.genero); });
+    var nombre = (document.querySelector(".cabecera-cat h1") || {}).textContent || "Modelos";
     var cont = document.createElement("div");
     cont.className = "tx-seccion";
     cont.innerHTML =
-      '<h2 class="galeria-titulo">Modelos disponibles</h2>' +
-      '<p class="tx-intro">Toca un modelo para ver su ficha técnica, colores, tallas y disponibilidad. Todos se pueden bordar o estampar con tu logo. ' +
-        '<span class="tx-fecha">Disponibilidad actualizada el ' + fecha(DATA.actualizado) + ".</span></p>" +
-      (generos.length > 1 ? '<div class="tx-filtros" role="group" aria-label="Filtrar por género"><button type="button" aria-pressed="true" data-g="">Todos</button>' +
-        generos.sort().map(function (g) { return '<button type="button" aria-pressed="false" data-g="' + esc(g) + '">' + esc(g) + "</button>"; }).join("") + "</div>" : "") +
+      '<div class="tx-cabecera">' +
+        '<h2 class="titular"><span class="t-azul">' + esc(nombre) + ' para tu equipo</span><span class="t-morado">Con tu logo bordado o estampado</span></h2>' +
+        '<p class="tx-intro">Elige un modelo y un color para ver sus fotos, tallas y ficha técnica. <b>' + lista.length + " modelos</b> con stock actualizado el " + fecha(DATA.actualizado) + ".</p>" +
+        (generos.length > 1 ? '<div class="tx-filtros" role="group" aria-label="Filtrar por género"><button type="button" aria-pressed="true" data-g="">Todos</button>' +
+          generos.sort().map(function (g) { return '<button type="button" aria-pressed="false" data-g="' + esc(g) + '">' + esc(g) + "</button>"; }).join("") + "</div>" : "") +
+      "</div>" +
       '<div class="tx-grid">' + lista.map(tarjeta).join("") + "</div>" +
       (gal.querySelector(".galeria-titulo") || !gal.children.length ? "" : '<h2 class="galeria-titulo tx-otros">Más modelos</h2>');
     gal.parentNode.insertBefore(cont, gal);
     var porId = {};
     lista.forEach(function (p) { porId[p.id] = p; });
     cont.addEventListener("click", function (e) {
-      var b = e.target.closest(".tx-card");
-      if (b) return abrir(porId[b.getAttribute("data-id")]);
+      var card = e.target.closest(".tx-card"), p = card && porId[card.getAttribute("data-id")];
+      var punto = e.target.closest(".tx-punto");
+      if (punto && p) return colorTarjeta(card, p, +punto.getAttribute("data-c"));
+      if (e.target.closest(".tx-ver") && p) return abrir(p, +(card.getAttribute("data-color") || 0));
       var f = e.target.closest("[data-g]");
       if (f) {
         var g = f.getAttribute("data-g");
         cont.querySelectorAll("[data-g]").forEach(function (x) { x.setAttribute("aria-pressed", x === f); });
         cont.querySelectorAll(".tx-card").forEach(function (c) {
-          var p = porId[c.getAttribute("data-id")];
-          c.hidden = !!g && p.genero !== g && p.genero !== "Unisex";
+          var q = porId[c.getAttribute("data-id")];
+          c.hidden = !!g && q.genero !== g && q.genero !== "Unisex";
         });
       }
+    });
+    // Con el mouse, pasar sobre un color también cambia la foto (como en texora.cl).
+    cont.addEventListener("mouseover", function (e) {
+      var punto = e.target.closest(".tx-punto"), card = punto && punto.closest(".tx-card");
+      if (card) colorTarjeta(card, porId[card.getAttribute("data-id")], +punto.getAttribute("data-c"));
     });
     var m = location.hash.match(/^#p-(\d+)$/);
     if (m && porId[m[1]]) abrir(porId[m[1]]);
@@ -136,7 +179,7 @@
     });
     document.body.appendChild(caja);
   }
-  function abrir(p) {
+  function abrir(p, color) {
     if (!p) return;
     if (!caja) crearCaja();
     actual = p;
@@ -162,7 +205,7 @@
         ((p.texto || []).length ? '<details class="tx-mas"><summary>Descripción completa</summary>' + p.texto.map(function (t) { return "<p>" + esc(t) + "</p>"; }).join("") + "</details>" : "") +
       "</div>";
     caja.querySelector(".tx-guia").hidden = true;
-    elegirColor(0);
+    elegirColor(color || 0);
     caja.classList.add("abierto");
     document.documentElement.classList.add("tx-sin-scroll");
     caja.querySelector(".tx-panel").scrollTop = 0;
@@ -204,17 +247,32 @@
     var msg = "Hola Uniformeweb, quiero cotizar " + p.nombre + " (cód. " + p.sku + ")" + (colorSel ? ", color " + colorSel.toLowerCase() : "") + ", con mi logo. " +
       location.href.split("#")[0] + "#p-" + p.id;
     caja.querySelector(".tx-wa").href = waLink(msg);
+    // Aviso para otros módulos (por ejemplo el modo cotizador).
+    try {
+      document.dispatchEvent(new CustomEvent("uw:ficha", { detail: { producto: p, color: colorSel, panel: caja.querySelector(".tx-info") } }));
+    } catch (e) { /* navegadores muy antiguos */ }
   }
   function verFoto(k) {
     var p = actual, lista = fotosDe(Math.max(0, (p.colores || []).map(function (c) { return c[0]; }).indexOf(colorSel)));
     var im = caja.querySelector(".tx-foto img");
     if (!lista.length) { im.removeAttribute("src"); return; }
-    im.src = foto(p, lista[k] || lista[0], "large_default");
+    var src = foto(p, lista[k] || lista[0], "large_default");
+    if (im.getAttribute("src") !== src) {
+      im.classList.add("tx-cambiando");
+      var pre = new Image();
+      pre.onload = pre.onerror = function () { im.src = src; im.classList.remove("tx-cambiando"); };
+      pre.src = src;
+    }
     im.alt = p.nombre + (colorSel ? " color " + colorSel : "");
     caja.querySelectorAll("[data-foto]").forEach(function (b) { b.setAttribute("aria-current", +b.getAttribute("data-foto") === k); });
   }
   // Agrega el producto al campo "Productos" del formulario del pie y lleva al formulario.
   function alFormulario() {
+    if (window.UWCotizador && typeof window.UWCotizador.agregar === "function") {
+      window.UWCotizador.agregar(actual, colorSel);
+      cerrar();
+      return;
+    }
     var f = document.getElementById("f-productos");
     if (!f) { location.href = "index.html#cotizar"; return; }
     var linea = "- " + actual.nombre + " (cód. " + actual.sku + ")" + (colorSel ? ", color " + colorSel.toLowerCase() : "") + ": cantidad y tallas: ";
