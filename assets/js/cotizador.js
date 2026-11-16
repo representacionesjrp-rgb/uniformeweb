@@ -366,7 +366,11 @@
       s.setAttribute("tabindex", "0");
       s.setAttribute("aria-label", "Agregar a mi cotización sin abrir la ficha");
       s.textContent = "+ Cotizar";
-      (c.querySelector(".tx-card-img") || c).appendChild(s);
+      // Si la tarjeta entera es un botón, el chip va sobre la foto; si la foto es
+      // su propio botón (diseño nuevo), el chip va como hijo directo de la tarjeta.
+      var fotoBtn = c.querySelector(".tx-card-img");
+      if (c.tagName === "BUTTON" && fotoBtn) fotoBtn.appendChild(s);
+      else { s.classList.add("uwc-chip-art"); c.appendChild(s); }
     });
   }
   function chipAccion(e) {

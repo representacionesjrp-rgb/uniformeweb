@@ -482,10 +482,10 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
    Usa los colores del sitio; --uwc-1 y --uwc-2 se pueden ajustar aquí.
    ========================================================================= */
 :root {
-  --uwc-1: var(--morado, #5b21b6);
-  --uwc-2: var(--fucsia, #d6267d);
+  --uwc-1: var(--t-morado, #8c0fb8);
+  --uwc-2: var(--tx-fucsia, #e2146c);
   --uwc-suave: color-mix(in srgb, var(--uwc-1) 8%, #fff);
-  --uwc-grad: linear-gradient(135deg, var(--uwc-1), var(--uwc-2));
+  --uwc-grad: var(--degradado, linear-gradient(135deg, var(--uwc-2), var(--uwc-1)));
 }
 .uwc-sin-scroll { overflow: hidden; }
 
@@ -503,6 +503,8 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
 /* Chip "+ Cotizar" sobre la foto de cada tarjeta */
 .tx-card, .tx-card-img { position: relative; }
 .uwc-chip { position: absolute; right: 10px; bottom: 10px; z-index: 2; padding: .38em .85em; border-radius: 999px; background: rgba(255,255,255,.94); color: var(--uwc-1); font-weight: 700; font-size: .82rem; line-height: 1.2; box-shadow: 0 4px 14px rgba(0,0,0,.14); cursor: pointer; opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s, background .2s, color .2s; }
+article.tx-card { container-type: inline-size; }
+.uwc-chip-art { bottom: auto; top: calc(100cqw - 2.6em); }
 .tx-card:hover .uwc-chip, .tx-card:focus-within .uwc-chip, .uwc-chip:focus, .uwc-chip.ok { opacity: 1; transform: none; }
 .uwc-chip:hover { background: var(--uwc-2); color: #fff; }
 .uwc-chip.ok { background: var(--uwc-1); color: #fff; }
