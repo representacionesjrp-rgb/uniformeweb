@@ -42,6 +42,31 @@ function pagina(p) {
 
 // Disponibilidad: el sitio es público, así que no se publican cantidades exactas de Texora.
 //   D = disponible, U = últimas unidades, A = agotado, "P dd-mm-aaaa" = llega en esa fecha.
+
+// Texora a veces muestra para un color las fotos de otro (p. ej. "Negro" con la foto azul).
+// Se detecta porque varios colores comparten la misma primera foto. Solo el "dueño" de esa
+// foto (revisado a mano) la conserva; el resto queda como "foto referencial" en la web.
+const DUENO_FOTO = {
+  768: 'Azul Marino', 784: 'Azul Royal', 797: 'Gris', 812: 'Negro',
+  847: 'Blanco', 939: 'Azul', 951: 'Negro', 952: 'Beige',
+  785: 'Azul Royal', 818: 'Negro/gris Oscuro',
+};
+export function referenciales(id, colores, cimg) {
+  const n = (colores || []).length;
+  if (n < 2) return undefined;
+  // Mismas fotos para todos los colores: solo el primero puede calzar.
+  if (!cimg) return [...Array(n).keys()].slice(1);
+  const grupos = {}, r = [];
+  cimg.forEach((l, i) => {
+    if (!l || !l.length) r.push(i);
+    else (grupos[l[0]] = grupos[l[0]] || []).push(i);
+  });
+  for (const g of Object.values(grupos)) {
+    if (g.length > 1) for (const i of g) if (colores[i][0] !== DUENO_FOTO[id]) r.push(i);
+  }
+  return r.length ? r.sort((a, b) => a - b) : undefined;
+}
+
 const UMBRAL_TALLA = 20, UMBRAL_TOTAL = 50;
 function nivel(v, umbral) {
   if (typeof v === 'string' && v[0] === 'P') return 'P ' + v.slice(1);
@@ -188,6 +213,7 @@ async function product(item) {
     // Si Texora no entregó ninguna talla (sesión sin permisos de distribuidor), no hay detalle.
     if (det && Object.values(det).every((t) => !Object.keys(t).length)) det = undefined;
   }
+  const cref = referenciales(+item.id, colors, cimg);
   const desc = firstSentence(strip(p.description_short));
   return {
     id: +item.id,
@@ -203,6 +229,7 @@ async function product(item) {
     slug: item.link.split('/').pop().replace(/^\d+-\d+-/, '').replace('.html', ''),
     colores: colors,
     cimg,
+    cref,
     det,
     detFecha: det ? new Date().toISOString().slice(0, 10) : undefined,
     guia,
