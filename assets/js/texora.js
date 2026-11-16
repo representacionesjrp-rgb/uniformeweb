@@ -77,11 +77,9 @@
         '<i style="background:' + esc(c[1] || "#ccc") + '"></i></button>';
     }).join("");
     var mas = cols.length > max ? '<span class="tx-mas-colores">+' + (cols.length - max) + "</span>" : "";
-    var seg = f0[1] || 0;
     return '<article class="tx-card" data-id="' + p.id + '" data-color="' + c0 + '">' +
       '<button type="button" class="tx-card-img tx-ver" aria-label="Ver ficha de ' + esc(p.nombre) + '">' +
         '<img class="tx-img1" loading="lazy" src="' + foto(p, f0[0]) + '" alt="' + esc(p.nombre) + '">' +
-        (seg ? '<img class="tx-img2" loading="lazy" src="' + foto(p, seg) + '" alt="" aria-hidden="true">' : "") +
         '<span class="tx-estado tx-' + r.clase + '">' + esc(r.texto) + "</span>" +
         (p.genero ? '<span class="tx-genero">' + esc(p.genero) + "</span>" : "") +
       "</button>" +
@@ -103,8 +101,6 @@
       pre.onload = pre.onerror = function () { im.src = src; im.classList.remove("tx-cambiando"); };
       pre.src = src;
     }
-    var l = fotosColor(p, i), im2 = card.querySelector(".tx-img2");
-    if (im2) { if (l[1]) { im2.src = foto(p, l[1]); im2.hidden = false; } else im2.hidden = true; }
     var t = card.querySelector(".tx-color-actual");
     if (t) t.textContent = nombreColor(p, i);
   }

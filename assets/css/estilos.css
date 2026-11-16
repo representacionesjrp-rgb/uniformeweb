@@ -427,7 +427,6 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
 .tx-ver { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
 .tx-card-img { position: relative; display: block; width: 100%; aspect-ratio: 1; background: radial-gradient(circle at 50% 40%, #fff 0%, var(--tx-lila) 70%, var(--tx-lila-2) 100%); overflow: hidden; }
 .tx-card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 18px; mix-blend-mode: multiply; transition: opacity .35s, transform .45s; }
-.tx-card-img .tx-img2 { opacity: 0; }
 .tx-card:hover .tx-img1 { transform: scale(1.04); }
 .tx-card-img .tx-img1.tx-cambiando, .tx-foto img.tx-cambiando { opacity: .35; }
 .tx-card-img .tx-estado { position: absolute; top: 14px; left: 14px; z-index: 1; }
@@ -535,4 +534,3 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
   .tx-cta .btn { flex: 1 1 100%; justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .tx-card, .tx-card::after, .tx-card-img img { transition: none; } .tx-ficha.abierto { animation: none; } }
-@media (hover: hover) { .tx-card-img:hover .tx-img2:not([hidden]) { opacity: 1; } .tx-card-img:hover .tx-img2:not([hidden]) ~ .tx-estado { opacity: 1; } }
