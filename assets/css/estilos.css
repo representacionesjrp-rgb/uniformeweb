@@ -443,6 +443,8 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
 .tx-punto i, .tx-colores i { display: block; width: 100%; height: 100%; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); }
 .tx-mas-colores { font-size: .78rem; color: var(--gris-texto); margin-left: 2px; }
 .tx-color-actual { width: 100%; font-size: .8rem; color: var(--t-morado); min-height: 1.2em; }
+.tx-nota-foto { margin: .5rem 0 0; padding: .45rem .7rem; font-size: .82rem; color: var(--t-morado); background: var(--tx-lila); border-radius: 10px; }
+.tx-nota-foto[hidden] { display: none; }
 .tx-ver-mas { margin-top: auto; align-self: flex-start; font-weight: 600; font-size: .95rem; background: var(--degradado); -webkit-background-clip: text; background-clip: text; color: transparent; padding-top: 6px; }
 .tx-ver-mas span { display: inline-block; transition: transform .2s; color: var(--tx-fucsia); }
 .tx-card:hover .tx-ver-mas span { transform: translateX(4px); }
