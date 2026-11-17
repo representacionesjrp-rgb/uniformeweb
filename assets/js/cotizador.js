@@ -6,7 +6,9 @@
    - Vendedores: abrir el sitio con ?vendedor=1 activa el modo vendedor en ese
      navegador (?vendedor=0 lo apaga). Suma "Abrir en el cotizador" (si
      UW.cotizadorUrl está configurado en config.js), "Copiar resumen" y la
-     disponibilidad por talla (stock) de cada modelo, solo como referencia.
+     disponibilidad por talla (stock) de cada modelo, solo como referencia. Si el
+     vendedor inició sesión en el cotizador, se ven las unidades exactas (las entrega
+     el cotizador privado, nunca el sitio público).
    La lista se guarda en el navegador, así que sigue igual al cambiar de página.
    Normalmente no necesita editar este archivo.
    ========================================================================= */
@@ -32,6 +34,26 @@
     if (m) guardar(CLAVE_V, m[1]);
   })();
   var vendedor = leer(CLAVE_V) === "1";
+
+  /* --- Stock exacto (solo vendedores con sesión en el cotizador) ------------- */
+  // null = sin consultar, false = sin sesión o sin datos, objeto = unidades por talla.
+  var stock = null, stockFecha = "";
+  function cargarStock() {
+    if (!vendedor || !UW.cotizadorUrl || !window.fetch) { stock = false; return; }
+    fetch(String(UW.cotizadorUrl).replace(/\/+$/, "") + "/api/stock", { credentials: "include", cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        stock = d && d.productos && Object.keys(d.productos).length ? d.productos : false;
+        stockFecha = (d && d.actualizado) || "";
+        pintar();
+      })
+      .catch(function () { stock = false; pintar(); });
+  }
+  function unidades(p, color, talla) {
+    var s = stock && p && stock[p.id];
+    var c = s && (s[color] || s[Object.keys(s)[0]]);
+    return c && c[talla] != null ? c[talla] : null;
+  }
 
   /* --- Datos ---------------------------------------------------------------- */
   var lista = [];
@@ -189,14 +211,23 @@
   function stockHTML(p, color) {
     var tallas = tallasDe(p, color);
     if (!p || !tallas.length) return "";
-    var sinDetalle = !p.det;
+    var sinDetalle = !p.det, conUnidades = false;
+    var items = tallas.map(function (t) {
+      var e = sinDetalle ? (p.disp === "A" ? "A" : "") : estadoTalla(p, color, t);
+      var u = unidades(p, color, t), txt = NOMBRE_ESTADO[e] || "Consultar";
+      if (u != null) {
+        conUnidades = true;
+        if (typeof u === "number") { txt = u + " un."; e = u <= 0 ? "A" : u < 20 ? "U" : "D"; }
+        else if (/^\+/.test(u)) { txt = "Más de " + u.slice(1); e = "D"; }
+        else if (/^P/.test(u)) { txt = "Llega " + u.slice(2, 7); e = "P"; }
+      }
+      var clase = { D: "disp", U: "ultimas", A: "agotada", P: "proximo" }[e] || "sin";
+      return '<li class="uwc-st-' + clase + '" title="' + esc(txt) + '"><b>' + esc(t) + "</b><span>" + esc(txt) + "</span></li>";
+    }).join("");
+    var nota = conUnidades ? (stockFecha ? '<small class="uwc-stock-nota">Unidades al ' + esc(new Date(stockFecha).toLocaleDateString("es-CL")) + "</small>" : "") :
+      stock === false && UW.cotizadorUrl ? '<small class="uwc-stock-nota"><a href="' + esc(String(UW.cotizadorUrl).replace(/\/+$/, "")) + '/login" target="_blank" rel="noopener">Inicia sesión en el cotizador</a> para ver las unidades exactas.</small>' : "";
     return '<div class="uwc-stock"><span class="uwc-stock-tit">Stock' + (color ? " en " + esc(color.toLowerCase()) : "") + "</span><ul>" +
-      tallas.map(function (t) {
-        var e = sinDetalle ? (p.disp === "A" ? "A" : "") : estadoTalla(p, color, t);
-        var clase = { D: "disp", U: "ultimas", A: "agotada", P: "proximo" }[e] || "sin";
-        return '<li class="uwc-st-' + clase + '" title="' + esc(NOMBRE_ESTADO[e] || "Por confirmar") + '"><b>' + esc(t) + "</b><span>" +
-          esc(NOMBRE_ESTADO[e] || "Consultar") + "</span></li>";
-      }).join("") + "</ul></div>";
+      items + "</ul>" + nota + "</div>";
   }
   function lineaHTML(it) {
     var p = producto(it.id);
@@ -393,6 +424,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     crear();
     pintar();
+    cargarStock();
     document.addEventListener("click", chipAccion, true);
     document.addEventListener("keydown", chipAccion, true);
     document.addEventListener("click", botonFicha, true);
