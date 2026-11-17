@@ -1,11 +1,12 @@
 /* =========================================================================
    UNIFORMEWEB · Modo cotizador ("Mi cotización")
    - Cualquier visitante arma su lista con "+ Cotizar" en las tarjetas o
-     "Agregar a mi cotización" en la ficha, elige color, tallas y logo, y la
-     envía por el formulario o por WhatsApp.
+     "Agregar a mi cotización" en la ficha, elige color, cantidad total y logo,
+     y la envía por el formulario o por WhatsApp. Las tallas no se piden.
    - Vendedores: abrir el sitio con ?vendedor=1 activa el modo vendedor en ese
      navegador (?vendedor=0 lo apaga). Suma "Abrir en el cotizador" (si
-     UW.cotizadorUrl está configurado en config.js) y "Copiar resumen".
+     UW.cotizadorUrl está configurado en config.js), "Copiar resumen" y la
+     disponibilidad por talla (stock) de cada modelo, solo como referencia.
    La lista se guarda en el navegador, así que sigue igual al cambiar de página.
    Normalmente no necesita editar este archivo.
    ========================================================================= */
@@ -36,6 +37,14 @@
   var lista = [];
   try { lista = JSON.parse(leer(CLAVE) || "[]"); if (!Array.isArray(lista)) lista = []; } catch (e) { lista = []; }
   function persistir() { guardar(CLAVE, JSON.stringify(lista)); }
+  // Listas guardadas con la versión anterior (cantidades por talla): se pasan a total.
+  lista.forEach(function (it) {
+    var t = it.tallas || {}, s = 0;
+    Object.keys(t).forEach(function (k) { s += Math.max(0, parseInt(t[k], 10) || 0); });
+    if (s) it.cantidad = s;
+    it.tallas = {};
+    delete it.soloTotal;
+  });
   // Después de enviar el formulario (página gracias.html) la lista se vacía.
   if (/gracias\.html$/.test(location.pathname)) {
     lista = []; persistir(); guardar(CLAVE + "-obs", "");
@@ -77,16 +86,8 @@
   }
   function pagina(p) { return p && p.pagina ? p.pagina + ".html#p-" + p.id : ""; }
 
-  function total(it) {
-    var t = it.tallas || {}, s = 0;
-    Object.keys(t).forEach(function (k) { s += entero(t[k]); });
-    return s || entero(it.cantidad);
-  }
-  function detalleTallas(it) {
-    var t = it.tallas || {};
-    var partes = Object.keys(t).filter(function (k) { return entero(t[k]) > 0; }).map(function (k) { return k + ": " + entero(t[k]); });
-    return partes.join(", ");
-  }
+  function total(it) { return entero(it.cantidad); }
+  var NOMBRE_ESTADO = { D: "Disponible", U: "Últimas unidades", A: "Agotado", P: "Próximamente" };
 
   /* --- API pública (la usa texora.js si existe) ---------------------------- */
   function agregar(p, color, abrirPanel) {
@@ -97,7 +98,7 @@
     if (!existente) {
       existente = {
         clave: clave, id: p.id, sku: p.sku, nombre: p.nombre, color: color,
-        foto: fotoDe(p, color), url: pagina(p), tallas: {}, cantidad: 0, logo: true
+        foto: fotoDe(p, color), url: pagina(p), cantidad: 0, logo: true
       };
       lista.push(existente);
     }
@@ -127,7 +128,7 @@
       '<aside class="uwc-panel" role="dialog" aria-modal="true" aria-labelledby="uwc-titulo" tabindex="-1">' +
         '<header class="uwc-cab">' +
           '<div><h2 id="uwc-titulo">Mi cotización</h2>' +
-          (vendedor ? '<span class="uwc-modo">Modo vendedor <button type="button" class="uwc-salir">Salir</button></span>' : '<p>Elige color, tallas y si lleva tu logo. Te respondemos en máximo 24 horas.</p>') +
+          (vendedor ? '<span class="uwc-modo">Modo vendedor <button type="button" class="uwc-salir">Salir</button></span>' : '<p>Elige color, cantidad y si lleva tu logo. Te respondemos en máximo 24 horas.</p>') +
           "</div>" +
           '<button type="button" class="uwc-x" aria-label="Cerrar">×</button>' +
         "</header>" +
@@ -144,11 +145,6 @@
       if (t.closest(".uwc-salir")) { guardar(CLAVE_V, "0"); location.href = location.pathname; return; }
       var linea = t.closest("[data-clave]"), it = linea && buscar(linea.getAttribute("data-clave"));
       if (t.closest(".uwc-quitar") && it) { lista.splice(lista.indexOf(it), 1); persistir(); pintar(); return; }
-      if (t.closest(".uwc-modo-total") && it) {
-        it.soloTotal = !it.soloTotal;
-        if (it.soloTotal) { it.cantidad = total(it); it.tallas = {}; } else it.cantidad = 0;
-        persistir(); pintar(); return;
-      }
       if (t.closest(".uwc-vaciar")) { if (window.confirm("¿Vaciar tu cotización?")) { lista = []; persistir(); pintar(); } return; }
       if (t.closest(".uwc-enviar")) return alFormulario();
       if (t.closest(".uwc-copiar")) return copiar(t.closest(".uwc-copiar"));
@@ -157,10 +153,7 @@
       var t = e.target, linea = t.closest("[data-clave]"), it = linea && buscar(linea.getAttribute("data-clave"));
       if (t.classList.contains("uwc-obs")) { guardar(CLAVE + "-obs", t.value); actualizarEnlaces(); return; }
       if (!it) return;
-      if (t.hasAttribute("data-talla")) {
-        it.tallas = it.tallas || {};
-        it.tallas[t.getAttribute("data-talla")] = entero(t.value);
-      } else if (t.classList.contains("uwc-total-in")) it.cantidad = entero(t.value);
+      if (t.classList.contains("uwc-total-in")) it.cantidad = entero(t.value);
       else if (t.classList.contains("uwc-logo-in")) it.logo = t.checked;
       persistir();
       var s = linea.querySelector(".uwc-suma");
@@ -176,10 +169,6 @@
       var nueva = p.id + "|" + t.value;
       if (buscar(nueva)) { aviso("Ese color ya está en tu cotización"); t.value = it.color; return; }
       it.color = t.value; it.clave = nueva; it.foto = fotoDe(p, t.value);
-      // Conserva solo las tallas que existen en el nuevo color.
-      var validas = tallasDe(p, t.value), nt = {};
-      Object.keys(it.tallas || {}).forEach(function (k) { if (validas.indexOf(k) > -1) nt[k] = it.tallas[k]; });
-      it.tallas = nt;
       persistir(); pintar(nueva);
     });
     document.addEventListener("keydown", function (e) {
@@ -196,6 +185,19 @@
     return null;
   }
 
+  // Solo modo vendedor: disponibilidad por talla del color elegido (referencia).
+  function stockHTML(p, color) {
+    var tallas = tallasDe(p, color);
+    if (!p || !tallas.length) return "";
+    var sinDetalle = !p.det;
+    return '<div class="uwc-stock"><span class="uwc-stock-tit">Stock' + (color ? " en " + esc(color.toLowerCase()) : "") + "</span><ul>" +
+      tallas.map(function (t) {
+        var e = sinDetalle ? (p.disp === "A" ? "A" : "") : estadoTalla(p, color, t);
+        var clase = { D: "disp", U: "ultimas", A: "agotada", P: "proximo" }[e] || "sin";
+        return '<li class="uwc-st-' + clase + '" title="' + esc(NOMBRE_ESTADO[e] || "Por confirmar") + '"><b>' + esc(t) + "</b><span>" +
+          esc(NOMBRE_ESTADO[e] || "Consultar") + "</span></li>";
+      }).join("") + "</ul></div>";
+  }
   function lineaHTML(it) {
     var p = producto(it.id);
     var colores = p && p.colores && p.colores.length > 1 ?
@@ -203,27 +205,13 @@
         return '<option' + (c[0] === it.color ? " selected" : "") + ">" + esc(c[0]) + "</option>";
       }).join("") + "</select></label>" :
       (it.color ? '<span class="uwc-campo">Color <b>' + esc(it.color) + "</b></span>" : "");
-    var tallas = it.soloTotal ? [] : tallasDe(p, it.color);
-    var cant;
-    if (tallas.length) {
-      cant = '<div class="uwc-tallas">' + tallas.map(function (t) {
-        var e = estadoTalla(p, it.color, t);
-        return '<label class="uwc-talla' + (e === "A" ? " agotada" : e === "U" ? " ultimas" : "") + '" title="' +
-          (e === "A" ? "Agotada por ahora" : e === "U" ? "Últimas unidades" : e === "P" ? "Próximamente" : "Talla " + esc(t)) + '">' +
-          "<span>" + esc(t) + '</span><input type="number" inputmode="numeric" min="0" step="1" data-talla="' + esc(t) + '" value="' +
-          (entero((it.tallas || {})[t]) || "") + '" placeholder="0" aria-label="Cantidad talla ' + esc(t) + '"></label>';
-      }).join("") + "</div>" +
-      '<button type="button" class="uwc-link uwc-modo-total">¿Aún no sabes las tallas? Indica solo el total</button>';
-    } else {
-      cant = '<label class="uwc-campo uwc-total">Cantidad total <input class="uwc-total-in" type="number" inputmode="numeric" min="0" step="1" value="' +
-        (entero(it.cantidad) || "") + '" placeholder="0"></label>' +
-        (tallasDe(p, it.color).length ? '<button type="button" class="uwc-link uwc-modo-total">Indicar por talla</button>' : "");
-    }
+    var cant = '<label class="uwc-campo uwc-total">Cantidad total <input class="uwc-total-in" type="number" inputmode="numeric" min="0" step="1" value="' +
+      (entero(it.cantidad) || "") + '" placeholder="0"></label>';
     return '<li class="uwc-linea" data-clave="' + esc(it.clave) + '">' +
       '<a class="uwc-foto" href="' + esc(it.url || "#") + '">' + (it.foto ? '<img src="' + esc(it.foto) + '" alt="" loading="lazy">' : "") + "</a>" +
       '<div class="uwc-datos">' +
         '<div class="uwc-nombre"><a href="' + esc(it.url || "#") + '">' + esc(it.nombre) + '</a><small>Cód. ' + esc(it.sku) + "</small></div>" +
-        colores + cant +
+        colores + cant + (vendedor ? stockHTML(p, it.color) : "") +
         '<div class="uwc-fila">' +
           '<label class="uwc-check"><input type="checkbox" class="uwc-logo-in"' + (it.logo ? " checked" : "") + "> Con logo</label>" +
           '<span class="uwc-suma">' + total(it) + " un.</span>" +
@@ -283,9 +271,8 @@
   function texto() {
     var obs = (leer(CLAVE + "-obs") || "").trim();
     return lista.map(function (it) {
-      var d = detalleTallas(it);
       return "- " + it.nombre + " (cód. " + it.sku + ")" + (it.color ? ", color " + it.color.toLowerCase() : "") +
-        ": " + (total(it) ? total(it) + " un." : "cantidad por definir") + (d ? " (" + d + ")" : "") +
+        ": " + (total(it) ? total(it) + " un." : "cantidad por definir") +
         (it.logo ? ", con logo" : ", sin logo");
     }).join("\n") + (obs ? "\nComentarios: " + obs : "");
   }
@@ -293,7 +280,7 @@
     var base = String(UW.cotizadorUrl || "").replace(/\/+$/, "");
     if (!base) return "";
     return base + "/cotizaciones?" + lista.map(function (it) {
-      var det = [it.color ? "Color " + it.color : "", detalleTallas(it), it.logo ? "Con logo" : ""].filter(Boolean).join("; ");
+      var det = [it.color ? "Color " + it.color : "", it.logo ? "Con logo" : ""].filter(Boolean).join("; ");
       return "p=" + encodeURIComponent(it.sku + "|" + total(it) + "|" + det);
     }).join("&");
   }
