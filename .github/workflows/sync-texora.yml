@@ -23,6 +23,8 @@ jobs:
           TEXORA_PROXY_KEY: ${{ secrets.TEXORA_PROXY_KEY }}
           TEXORA_EMAIL: ${{ secrets.TEXORA_EMAIL }}
           TEXORA_PASSWORD: ${{ secrets.TEXORA_PASSWORD }}
+          STOCK_URL: ${{ secrets.STOCK_URL }}
+          STOCK_KEY: ${{ secrets.STOCK_KEY }}
       - name: Guardar cambios
         run: |
           git config user.name "github-actions[bot]"

@@ -614,6 +614,8 @@ article.tx-card { container-type: inline-size; }
 .uwc-stock li.uwc-st-agotada b { text-decoration: line-through; }
 .uwc-stock li.uwc-st-proximo { background: #eef1ff; color: #3646a8; }
 .uwc-stock li.uwc-st-sin { background: #f6f6f8; color: #6b6b78; }
+.uwc-stock-nota { display: block; margin-top: 4px; font-size: .72rem; color: var(--suave); }
+.uwc-stock-nota a { color: var(--uwc-2); }
 .uwc-fila { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .uwc-check { display: inline-flex; align-items: center; gap: .4em; font-size: .88rem; font-weight: 600; cursor: pointer; }
 .uwc-check input { width: 18px; height: 18px; accent-color: var(--uwc-2); }

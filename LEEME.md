@@ -99,7 +99,9 @@ Cada visitante arma su propia cotización mientras navega, sin crear cuenta:
 
 **Vendedores:** abran el sitio una vez con `?vendedor=1` (por ejemplo `https://www.uniformeweb.cl/?vendedor=1`) y queda activo en ese navegador
 (`?vendedor=0` o el botón "Salir" lo apaga). Cada producto de la lista muestra su **stock por talla** del color elegido
-(Disponible, Últimas unidades, Agotado, Próximamente), solo como referencia. Suma **Copiar resumen** y, si `cotizadorUrl` está configurado en `config.js`,
+(Disponible, Últimas unidades, Agotado, Próximamente), solo como referencia. Si el vendedor tiene la sesión abierta en el cotizador
+(ventas.uniformeweb.cl), ve las **unidades exactas** por talla: el sincronizador las envía al cotizador privado
+(secretos `STOCK_URL` y `STOCK_KEY` en GitHub, `STOCK_SYNC_KEY` en Railway) y nunca quedan en el sitio público. Suma **Copiar resumen** y, si `cotizadorUrl` está configurado en `config.js`,
 **Abrir en el cotizador** (ventas.uniformeweb.cl), que manda los productos como `/cotizaciones?p=código|cantidad|detalle` (mismo formato que laropa.cl).
 
 Archivos: `assets/js/cotizador.js` y el bloque "Modo cotizador" al final de `assets/css/estilos.css`.

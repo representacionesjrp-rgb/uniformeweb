@@ -9,10 +9,17 @@
 //   TEXORA_PROXY, TEXORA_PROXY_KEY dirección y clave del Worker de Cloudflare (cloudflare/texora-proxy.js).
 //                                  Texora bloquea las conexiones desde GitHub (HTTP 403); a través del
 //                                  Worker las peticiones salen desde Cloudflare, que sí es aceptado.
+//   STOCK_URL, STOCK_KEY           cotizador privado (https://ventas.uniformeweb.cl/api/stock) y su clave
+//                                  (STOCK_SYNC_KEY en Railway). Con sesión de distribuidor, se le envían las
+//                                  unidades exactas por color y talla. No se publican en el sitio: solo las
+//                                  ven los vendedores que iniciaron sesión en el cotizador.
 
 const BASE = 'https://texora.cl';
 const PROXY = (process.env.TEXORA_PROXY || '').replace(/\/+$/, '');
 const PROXY_KEY = process.env.TEXORA_PROXY_KEY || '';
+const STOCK_URL = process.env.STOCK_URL || '';
+const STOCK_KEY = process.env.STOCK_KEY || '';
+const STOCK = {}; // id -> color -> talla -> unidades (privado, va solo al cotizador)
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
   'Accept-Language': 'es-CL,es;q=0.9',
@@ -105,7 +112,7 @@ async function login() {
   console.log(ok ? 'Sesión de distribuidor iniciada.' : 'No se pudo iniciar sesión; se usa solo la disponibilidad total.');
   return ok;
 }
-function sizeTable(html) {
+function sizeTable(html, raw) {
   const t = (html.match(/<table[\s\S]*?<\/table>/) || [])[0];
   const out = {};
   if (!t) return out;
@@ -114,6 +121,7 @@ function sizeTable(html) {
     if (cells.length < 4) continue;
     const v = cells[cells.length - 1];
     const soon = v.match(/pr[oó]ximamente\s*(\d\d-\d\d-\d{4})/i);
+    if (raw) raw[cells[0]] = soon ? 'P ' + soon[1] : v.startsWith('+') ? v.replace(/[^\d+]/g, '') : +(v.replace(/\D/g, '') || 0);
     out[cells[0]] = nivel(soon ? 'P' + soon[1] : v.startsWith('+') ? '+' : +(v.replace(/\D/g, '') || 0), UMBRAL_TALLA);
   }
   return out;
@@ -205,7 +213,11 @@ async function product(item) {
     for (const [v, t] of vals) {
       const body = new URLSearchParams({ ajax: '1', action: 'refresh', quantity_wanted: '1', 'group[2]': v });
       const j = await get(`${BASE}/index.php?controller=product&id_product=${item.id}`, true, 3, { method: 'POST', body });
-      if (det) det[colorName(t)] = sizeTable(j.product_variants || '');
+      if (det) {
+        const raw = {};
+        det[colorName(t)] = sizeTable(j.product_variants || '', raw);
+        if (Object.keys(raw).length) (STOCK[item.id] = STOCK[item.id] || {})[colorName(t)] = raw;
+      }
       cimg.push([...new Set([...(j.product_cover_thumbnails || '').matchAll(/(\d+)-large_default/g)].map((x) => +x[1]))].slice(0, 6));
       await sleep(150);
     }
@@ -301,6 +313,23 @@ async function main() {
   const porPagina = {};
   for (const p of ok) porPagina[p.pagina] = (porPagina[p.pagina] || 0) + 1;
   console.log(`Listo: ${ok.length} productos.`, porPagina);
+  await enviarStock(ok);
+}
+
+// Unidades exactas al cotizador privado (no al sitio público). Si falla, el catálogo igual se actualiza.
+async function enviarStock(ok) {
+  if (!STOCK_URL || !STOCK_KEY) return;
+  if (!LOGGED) { console.log('Sin sesión de distribuidor: no se envía stock al cotizador.'); return; }
+  const productos = {};
+  for (const p of ok) if (STOCK[p.id]) productos[p.id] = STOCK[p.id];
+  try {
+    const r = await fetch(STOCK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Clave': STOCK_KEY },
+      body: JSON.stringify({ actualizado: new Date().toISOString(), productos }),
+    });
+    console.log(r.ok ? `Stock enviado al cotizador (${Object.keys(productos).length} productos).` : 'El cotizador rechazó el stock: HTTP ' + r.status);
+  } catch (e) { console.warn('No se pudo enviar el stock al cotizador:', e.message); }
 }
 
 main().catch((e) => { console.error(e.message); process.exit(1); });
