@@ -16,6 +16,13 @@ window.UW = {
   whatsapp: "56977235026",
   // Cómo se muestra el número en pantalla.
   whatsappTexto: "+56 9 7723 5026",
+  /* ---------- MODO COTIZADOR ----------
+     Dirección del cotizador interno de ventas (sin / al final). Con ella, los
+     vendedores (sitio abierto con ?vendedor=1) ven "Abrir en el cotizador",
+     que manda los productos como /cotizaciones?p=código|cantidad|detalle.
+     Vacío = solo "Copiar resumen". */
+  cotizadorUrl: "https://ventas.uniformeweb.cl",
+
   mensajeWhatsapp: "Hola Uniformeweb, quiero cotizar ropa corporativa con logo.",
 
   /* ---------- IMÁGENES ----------
