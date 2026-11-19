@@ -50,6 +50,103 @@
       })
       .catch(function () { stock = false; pintar(); });
   }
+  function baseCot() { return String(UW.cotizadorUrl || "").replace(/\/+$/, ""); }
+  function clp(n) { return "$" + String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+  var MAX = 10; // máximo de productos distintos por solicitud (igual que La Ropa)
+
+  /* --- Precios por tramo (solo vendedores con sesión en el cotizador) -------- */
+  // El cotizador entrega { tramos:[7], logo:[7], p:{ SKU:[7 precios netos] } }.
+  var precios = null;
+  function cargarPrecios() {
+    if (!vendedor || !UW.cotizadorUrl || !window.fetch) { precios = false; return; }
+    fetch(baseCot() + "/api/precios-web", { credentials: "include", cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        precios = d && d.p && d.tramos && d.logo ? d : false;
+        pintar(); preciosTarjetas(); preciosFicha();
+      })
+      .catch(function () { precios = false; pintar(); preciosFicha(); });
+  }
+  function preciosDe(sku) { return precios && sku != null ? precios.p[String(sku).toUpperCase()] || null : null; }
+  // Mismo cálculo que La Ropa: el tramo es el más alto cuyo mínimo alcanza el total
+  // neto calculado con los precios de ese tramo (productos + logo bordado).
+  function calc() {
+    if (!precios) return null;
+    var T = precios.tramos, L = precios.logo, n = T.length, tot = [], i, sinPrecio = 0, conLogo = 0;
+    for (i = 0; i < n; i++) tot.push(0);
+    lista.forEach(function (it) {
+      var pr = preciosDe(it.sku), q = total(it);
+      if (!q) return;
+      if (!pr) { sinPrecio++; return; }
+      if (it.logo) conLogo += q;
+      for (i = 0; i < n; i++) tot[i] += q * (pr[i] + (it.logo ? L[i] : 0));
+    });
+    var k = 0;
+    for (i = 0; i < n; i++) if (tot[i] > 0 && tot[i] >= T[i]) k = i;
+    return { k: k, neto: tot[k], sig: k + 1 < n && tot[k + 1] > 0 ? T[k + 1] - tot[k + 1] : 0, sinPrecio: sinPrecio, conLogo: conLogo };
+  }
+  function nombreTramo(k) {
+    var T = precios.tramos;
+    return k === 0 ? "Menos de " + clp(T[1] || 0) : "Desde " + clp(T[k]);
+  }
+  function enlaceSesion(txt) {
+    return '<a href="' + esc(baseCot()) + '/login" target="_blank" rel="noopener">Inicia sesión en el cotizador</a> ' + txt;
+  }
+  // Tarjetas: "$X + IVA · desde $Y por volumen".
+  function preciosTarjetas(raiz) {
+    if (!precios) return;
+    (raiz || document).querySelectorAll(".tx-card[data-id]").forEach(function (c) {
+      if (c.querySelector(".uwc-precio")) return;
+      var p = producto(c.getAttribute("data-id")), pr = p && preciosDe(p.sku);
+      if (!pr) return;
+      var e = document.createElement("p");
+      e.className = "uwc-precio";
+      e.innerHTML = "<b>" + clp(pr[0]) + "</b> + IVA" + (pr[pr.length - 1] < pr[0] ? " <span>desde " + clp(pr[pr.length - 1]) + " por volumen</span>" : "");
+      var cod = c.querySelector(".tx-cod");
+      if (cod) cod.parentNode.insertBefore(e, cod.nextSibling); else c.appendChild(e);
+    });
+  }
+  // Ficha: precio para la cotización actual y tabla de tramos con el logo.
+  var fichaAbierta = null;
+  function preciosFicha() {
+    if (!fichaAbierta || !vendedor) return;
+    var p = fichaAbierta.producto, caja = fichaAbierta.panel;
+    if (!caja || !caja.isConnected) return;
+    var viejo = caja.querySelector(".uwc-ptier");
+    if (viejo) viejo.remove();
+    var d = document.createElement("div");
+    d.className = "uwc-ptier";
+    var pr = preciosDe(p && p.sku);
+    if (precios === null) return;
+    if (!precios) {
+      if (!UW.cotizadorUrl) return;
+      d.innerHTML = "<small>" + enlaceSesion("para ver los precios por tramo.") + "</small>";
+    } else if (!pr) {
+      d.innerHTML = "<small>Este modelo no tiene precio en el cotizador.</small>";
+    } else {
+      var r = calc(), it = buscar(String(p.id)), k = r.k, L = precios.logo;
+      var unit = pr[k] + (it && it.logo ? L[k] : 0);
+      var cab = it && total(it) ?
+        "<p class=\"uwc-ptier-u\"><b>" + clp(unit) + "</b> c/u + IVA <span>· " + clp(unit * 1.19) + " con IVA" + (it.logo ? " · incluye logo " + clp(L[k]) : "") + "</span></p>" +
+        "<p>Este modelo: " + clp(unit * total(it)) + " neto (" + total(it) + " un.) · Tu cotización: " + clp(r.neto) + " neto</p>" +
+        (r.sig > 0 ? "<p class=\"uwc-ptier-sig\">Agrega " + clp(r.sig) + " netos a tu cotización y baja a " + clp(pr[k + 1] + (it.logo ? L[k + 1] : 0)) + " por unidad.</p>" : "") :
+        "<p class=\"uwc-ptier-u\"><b>" + clp(pr[k]) + "</b> c/u + IVA <span>· desde " + clp(pr[pr.length - 1]) + " por volumen</span></p>" +
+        (lista.length ? "<p>Precio con el tramo actual de tu cotización (" + nombreTramo(k).toLowerCase() + ").</p>" : "");
+      var filas = precios.tramos.map(function (t, i) {
+        return "<tr" + (i === k ? ' class="actual"' : "") + "><td>" + nombreTramo(i) + "</td><td>" + clp(pr[i]) + "</td><td>" + clp(L[i]) + "</td></tr>";
+      }).join("");
+      d.innerHTML = cab +
+        '<table><thead><tr><th>Compra total (neto)</th><th>Precio unitario</th><th>Bordado logo 8x3 cm</th></tr></thead><tbody>' + filas + "</tbody></table>" +
+        '<small>El tramo se calcula con el total neto de toda la cotización. El bordado del logo cuesta ' + clp(L[0]) + " c/u y baja hasta " + clp(L[L.length - 1]) + " c/u en compras más grandes. Valores referenciales, sin IVA.</small>";
+    }
+    var antesDe = caja.querySelector(".tx-tallas");
+    if (antesDe && antesDe.nextSibling) caja.insertBefore(d, antesDe.nextSibling); else caja.appendChild(d);
+  }
+  document.addEventListener("uw:ficha", function (e) {
+    fichaAbierta = e.detail && e.detail.producto ? e.detail : null;
+    preciosFicha();
+  });
+
   function unidades(p, color, talla) {
     var s = stock && p && stock[p.id];
     var c = s && (s[color] || s[Object.keys(s)[0]]);
@@ -129,6 +226,9 @@
     if (!p) return;
     color = color || ((p.colores || [])[0] || [""])[0];
     var clave = String(p.id), existente = buscar(clave);
+    if (!existente && lista.length >= MAX) {
+      return agregado(p, 0, "limite");
+    }
     pedirCantidad(p, color, existente ? entero(existente.cantidad) : 0, function (n) {
       if (!existente) {
         existente = {
@@ -141,10 +241,55 @@
       persistir();
       pintar();
       pulso();
+      preciosFicha();
       if (abrirPanel === true) abrir(clave);
-      else aviso(n + (n === 1 ? " unidad" : " unidades") + " de " + p.nombre + " en tu cotización");
+      else agregado(p, n, lista.length >= MAX ? "lleno" : "");
     });
   }
+
+  /* --- Aviso "Agregado a tu cotización" (como en La Ropa) -------------------- */
+  var agr, tAgr;
+  function agregado(p, n, tipo) {
+    if (!agr) {
+      agr = document.createElement("div");
+      agr.className = "uwc-agr";
+      agr.setAttribute("role", "status");
+      agr.setAttribute("aria-live", "polite");
+      document.body.appendChild(agr);
+      agr.addEventListener("click", function (e) {
+        if (e.target.closest(".uwc-agr-ver")) { cerrarAgr(); abrir(); }
+        else if (e.target.closest(".uwc-agr-seguir, .uwc-agr-x")) cerrarAgr();
+      });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && agr.classList.contains("visible")) cerrarAgr(); });
+    }
+    var u = 0;
+    lista.forEach(function (it) { u += total(it); });
+    var r = calc(), foto = fotoDe(p, ((p.colores || [])[0] || [""])[0]);
+    var tit, txt;
+    if (tipo === "limite") {
+      tit = "No agregamos “" + esc(p.nombre) + "”";
+      txt = "Tu cotización ya tiene " + MAX + " productos distintos, el máximo por solicitud. Envíala y luego puedes armar otra.";
+    } else {
+      tit = "Agregado a tu cotización (" + n + " un.)";
+      txt = tipo === "lleno" ?
+        "Listo, quedó agregado. Tu cotización ya tiene " + MAX + " productos distintos, el máximo por solicitud. Envíala y luego puedes armar otra." :
+        "Llevas " + u + (u === 1 ? " unidad" : " unidades") + " en total · " + lista.length + " de " + MAX + " productos.";
+    }
+    agr.className = "uwc-agr" + (tipo === "limite" ? " uwc-agr-limite" : "");
+    agr.innerHTML = '<button type="button" class="uwc-agr-x" aria-label="Cerrar">×</button>' +
+      (foto ? '<img src="' + esc(foto) + '" alt="">' : "") +
+      "<div><b>" + tit + "</b>" + (tipo === "limite" ? "" : "<span>" + esc(p.nombre) + "</span>") + "<p>" + txt + "</p>" +
+      (r && r.neto && tipo !== "limite" ? '<p class="uwc-agr-est">Total estimado ' + clp(r.neto) + " + IVA · " + nombreTramo(r.k).toLowerCase() + "</p>" : "") +
+      '<div class="uwc-agr-btns"><button type="button" class="btn btn-acento uwc-agr-ver">' + (tipo ? "Enviar mi cotización" : "Ver mi cotización") + "</button>" +
+      '<button type="button" class="btn btn-borde uwc-agr-seguir">Seguir cotizando</button></div></div>';
+    void agr.offsetWidth;
+    agr.classList.add("visible");
+    clearTimeout(tAgr);
+    tAgr = setTimeout(cerrarAgr, 12000);
+    var v = agr.querySelector(".uwc-agr-ver");
+    if (v && window.matchMedia("(pointer:fine)").matches) try { v.focus({ preventScroll: true }); } catch (e) {}
+  }
+  function cerrarAgr() { if (agr) agr.classList.remove("visible"); clearTimeout(tAgr); }
 
   /* --- Ventana "¿Cuántas unidades?" ------------------------------------------ */
   var dlg, dlgListo = null, dlgAntes = null;
@@ -203,7 +348,7 @@
       '<aside class="uwc-panel" role="dialog" aria-modal="true" aria-labelledby="uwc-titulo" tabindex="-1">' +
         '<header class="uwc-cab">' +
           '<div><h2 id="uwc-titulo">Mi cotización</h2>' +
-          (vendedor ? '<span class="uwc-modo">Modo vendedor <button type="button" class="uwc-salir">Salir</button></span>' : '<p>Indica cuántas unidades y si lleva tu logo. Te respondemos en máximo 24 horas.</p>') +
+          (vendedor ? '<span class="uwc-modo">Modo vendedor <button type="button" class="uwc-salir">Salir</button></span>' : '<p>Cotiza sin crear cuenta: indica cuántas unidades y si lleva tu logo. Te respondemos en máximo 24 horas.</p>') +
           "</div>" +
           '<button type="button" class="uwc-x" aria-label="Cerrar">×</button>' +
         "</header>" +
@@ -300,6 +445,7 @@
           '<span class="uwc-suma">' + total(it) + " un.</span>" +
           '<button type="button" class="uwc-quitar" aria-label="Quitar ' + esc(it.nombre) + '">Quitar</button>' +
         "</div>" +
+        (precios ? '<div class="uwc-lp"></div>' : "") +
       "</div></li>";
   }
 
@@ -318,7 +464,8 @@
     }
     var obs = leer(CLAVE + "-obs") || "";
     cuerpo.innerHTML = '<ul class="uwc-lista">' + lista.map(lineaHTML).join("") + "</ul>" +
-      '<label class="uwc-campo uwc-obs-c">Comentarios (opcional)<textarea class="uwc-obs" rows="2" placeholder="Ej.: logo en el pecho izquierdo, entrega antes del 15">' + esc(obs) + "</textarea></label>";
+      '<label class="uwc-campo uwc-obs-c">Comentarios (opcional)<textarea class="uwc-obs" rows="2" placeholder="Ej.: logo en el pecho izquierdo, entrega antes del 15">' + esc(obs) + "</textarea></label>" +
+      (vendedor ? '<div class="uwc-est"></div>' : "");
     pieP.innerHTML =
       '<div class="uwc-resumen"></div>' +
       '<div class="uwc-acciones">' +
@@ -345,19 +492,53 @@
     if (!r) return;
     var u = 0, sinCant = 0;
     lista.forEach(function (it) { var t = total(it); u += t; if (!t) sinCant++; });
-    r.innerHTML = "<span>" + lista.length + (lista.length === 1 ? " modelo" : " modelos") + "</span><b>" + u + " unidades</b>" +
-      (sinCant ? '<small>Falta la cantidad en ' + sinCant + (sinCant === 1 ? " modelo" : " modelos") + "</small>" : "");
+ var r0 = calc();
+    r.innerHTML = "<span>" + lista.length + " de " + MAX + " productos</span><b>" + u + " unidades</b>" +
+      (sinCant ? '<small>Falta la cantidad en ' + sinCant + (sinCant === 1 ? " modelo" : " modelos") + "</small>" : "") +
+      (r0 && r0.neto ? '<small class="uwc-res-est">Total estimado ' + clp(r0.neto * 1.19) + " con IVA (" + clp(r0.neto) + " neto)</small>" : "") +
+      (lista.length >= MAX ? "<small>Llegaste al máximo de " + MAX + " productos distintos por solicitud.</small>" : "");
+    estimado();
     actualizarEnlaces();
+  }
+  // Solo vendedores con precios: precio por línea y total estimado con IVA.
+  function estimado() {
+    var e = cuerpo && cuerpo.querySelector(".uwc-est");
+    if (!e) return;
+    if (!precios) {
+      e.innerHTML = vendedor && precios === false && UW.cotizadorUrl ? "<small>" + enlaceSesion("para ver precios y el total estimado.") + "</small>" : "";
+      return;
+    }
+    var r = calc(), L = precios.logo, k = r.k;
+    cuerpo.querySelectorAll(".uwc-linea[data-clave]").forEach(function (li) {
+      var it = buscar(li.getAttribute("data-clave")), lp = li.querySelector(".uwc-lp"), pr = it && preciosDe(it.sku);
+      if (!lp) return;
+      if (!pr) { lp.textContent = "Sin precio en el cotizador"; return; }
+      var unit = pr[k] + (it.logo ? L[k] : 0);
+      lp.innerHTML = "<b>" + clp(unit) + "</b> c/u" + (it.logo ? " (incluye logo " + clp(L[k]) + ")" : "") + " · " + clp(unit * total(it)) + " neto";
+    });
+    if (!r.neto) { e.innerHTML = "<small>Indica las cantidades para ver el total estimado.</small>"; return; }
+    e.innerHTML = "<dl>" +
+      "<dt>Tramo</dt><dd>" + nombreTramo(k) + "</dd>" +
+      (r.conLogo ? "<dt>Logo bordado 8x3 cm</dt><dd>" + clp(L[k]) + " c/u</dd>" : "") +
+      "<dt>Total neto</dt><dd>" + clp(r.neto) + "</dd>" +
+      "<dt>IVA 19%</dt><dd>" + clp(r.neto * 0.19) + "</dd>" +
+      '<dt class="uwc-est-t">Total estimado</dt><dd class="uwc-est-t">' + clp(r.neto * 1.19) + "</dd></dl>" +
+      (r.sig > 0 ? '<p class="uwc-est-sig">Te faltan ' + clp(r.sig) + " netos para el siguiente tramo (" + nombreTramo(k + 1).toLowerCase() + ").</p>" : "") +
+      (r.sinPrecio ? "<small>" + r.sinPrecio + (r.sinPrecio === 1 ? " modelo no tiene" : " modelos no tienen") + " precio en el cotizador y no se suma.</small>" : "") +
+      "<small>Valores referenciales sin despacho. El precio final lo confirma el cotizador.</small>";
   }
 
   /* --- Textos de salida ------------------------------------------------------ */
   function texto() {
-    var obs = (leer(CLAVE + "-obs") || "").trim();
+    var obs = (leer(CLAVE + "-obs") || "").trim(), r = calc();
     return lista.map(function (it) {
+      var pr = r && preciosDe(it.sku), unit = pr ? pr[r.k] + (it.logo ? precios.logo[r.k] : 0) : 0;
       return "- " + it.nombre + " (cód. " + it.sku + ")" +
         ": " + (total(it) ? total(it) + " un." : "cantidad por definir") +
-        (it.logo ? ", con logo" : ", sin logo");
-    }).join("\n") + (obs ? "\nComentarios: " + obs : "");
+        (it.logo ? ", con logo" : ", sin logo") +
+        (unit && total(it) ? " · " + clp(unit) + " c/u neto" : "");
+    }).join("\n") + (obs ? "\nComentarios: " + obs : "") +
+      (r && r.neto ? "\nTotal estimado: " + clp(r.neto) + " neto + IVA = " + clp(r.neto * 1.19) + " (" + nombreTramo(r.k).toLowerCase() + ")" : "");
   }
   function urlCotizador() {
     var base = String(UW.cotizadorUrl || "").replace(/\/+$/, "");
@@ -474,12 +655,13 @@
     crear();
     pintar();
     cargarStock();
+    cargarPrecios();
     document.addEventListener("click", chipAccion, true);
     document.addEventListener("keydown", chipAccion, true);
     document.addEventListener("click", botonFicha, true);
     chips();
     new MutationObserver(function (ms) {
-      for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes.length) { chips(); break; }
+      for (var i = 0; i < ms.length; i++) if (ms[i].addedNodes.length) { chips(); preciosTarjetas(); break; }
     }).observe(document.body, { childList: true, subtree: true });
     if (/[?&]cotizacion=1/.test(location.search) || location.hash === "#mi-cotizacion") abrir();
   });
