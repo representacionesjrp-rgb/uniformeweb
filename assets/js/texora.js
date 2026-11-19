@@ -113,6 +113,31 @@
     if (t) t.textContent = nombreColor(p, i);
   }
 
+  // Tipos de producto de cada página, en el orden de texora.cl. Se arman con las subcategorías
+  // que la sincronización lee de Texora (campo "sub"), así que se mantienen solos al actualizar el
+  // catálogo. Un tipo sin modelos no aparece. "Ropa técnica" junta ignífuga, antiestática y antiácida.
+  var TECNICA = ["Ignífuga", "Antiestática", "Antiácida"];
+  var TIPOS = {
+    pantalones: [["Cargo"], ["Jeans"], ["Ejecutivo"], ["Outwork"], ["Térmicos", "Térmico"], ["Softshell"], ["Alta visibilidad"], [TECNICA, "Ropa técnica"]],
+    parkas: [["Térmicas"], ["3 en 1"], ["Impermeable", "Impermeables"], ["Alta visibilidad"], [TECNICA, "Ropa técnica"]],
+    poleras: [["Poleras polo", "Polo"], ["Poleras", "Poleras"], ["Primeras capas"], ["Alta visibilidad"], [TECNICA, "Ropa técnica"]],
+    camisas: [["Camisas"], ["Blusas"], [TECNICA, "Ropa técnica"]],
+    softshell: [["Térmicas"], ["Impermeable"], ["Alta visibilidad"]],
+    micropolar: [["Alta visibilidad"]],
+    epp: [["Overoles"], ["Chalecos geólogo", "Chalecos geólogo"], ["Alta visibilidad"], [TECNICA, "Ropa técnica"]],
+    jockeys: [["Jockeys"], ["Gorros"], ["Bandanas"]]
+  };
+  function tiposDe(id, lista) {
+    return (TIPOS[id] || []).map(function (d) {
+      var subs = [].concat(d[0]);
+      return { nombre: d[1] || subs[0], es: function (p) { return (p.sub || []).some(function (s) { return subs.indexOf(s) > -1; }); } };
+    }).filter(function (t) {
+      // Solo sirve si separa algo: al menos un modelo, y no todos.
+      var n = lista.filter(t.es).length;
+      return n > 0 && n < lista.length;
+    });
+  }
+
   function pagina() {
     var id = document.body.getAttribute("data-categoria");
     var gal = document.getElementById("galeria");
@@ -121,6 +146,7 @@
     if (!lista.length) return;
     var generos = [];
     lista.forEach(function (p) { if (p.genero && generos.indexOf(p.genero) < 0) generos.push(p.genero); });
+    var tipos = tiposDe(id, lista);
     var nombre = (document.querySelector(".cabecera-cat h1") || {}).textContent || "Modelos";
     var cont = document.createElement("div");
     cont.className = "tx-seccion";
@@ -130,7 +156,10 @@
         '<p class="tx-intro">Elige un modelo y un color para ver sus fotos, tallas y ficha técnica. <b>' + lista.length + " modelos</b> con stock actualizado el " + fecha(DATA.actualizado) + ".</p>" +
         (generos.length > 1 ? '<div class="tx-filtros" role="group" aria-label="Filtrar por género"><button type="button" aria-pressed="true" data-g="">Todos</button>' +
           generos.sort().map(function (g) { return '<button type="button" aria-pressed="false" data-g="' + esc(g) + '">' + esc(g) + "</button>"; }).join("") + "</div>" : "") +
+        (tipos.length ? '<div class="tx-tipos" role="group" aria-label="Filtrar por tipo"><button type="button" aria-pressed="true" data-t="">Todos los tipos</button>' +
+          tipos.map(function (t, i) { return '<button type="button" aria-pressed="false" data-t="' + (i + 1) + '">' + esc(t.nombre) + ' <span class="tx-tipo-n"></span></button>'; }).join("") + "</div>" : "") +
       "</div>" +
+      '<p class="tx-vacio" hidden>No hay modelos de este tipo para la opción elegida. Prueba con «Todos».</p>' +
       '<div class="tx-grid">' + lista.map(tarjeta).join("") + "</div>" +
       (gal.querySelector(".galeria-titulo") || !gal.children.length ? "" : '<h2 class="galeria-titulo tx-otros">Más modelos</h2>');
     gal.parentNode.insertBefore(cont, gal);
@@ -143,14 +172,38 @@
       if (e.target.closest(".tx-ver") && p) return abrir(p, +(card.getAttribute("data-color") || 0));
       var f = e.target.closest("[data-g]");
       if (f) {
-        var g = f.getAttribute("data-g");
+        filtro.g = f.getAttribute("data-g");
         cont.querySelectorAll("[data-g]").forEach(function (x) { x.setAttribute("aria-pressed", x === f); });
-        cont.querySelectorAll(".tx-card").forEach(function (c) {
-          var q = porId[c.getAttribute("data-id")];
-          c.hidden = !!g && q.genero !== g && q.genero !== "Unisex";
-        });
+        filtrar();
+      }
+      var t = e.target.closest("[data-t]");
+      if (t) {
+        filtro.t = t.getAttribute("data-t");
+        cont.querySelectorAll("[data-t]").forEach(function (x) { x.setAttribute("aria-pressed", x === t); });
+        filtrar();
       }
     });
+    // Filtros combinados: género (Todos/Hombre/Mujer) y tipo (Cargo, Jeans…, como en texora.cl).
+    var filtro = { g: "", t: "" };
+    function pasaGenero(q) { return !filtro.g || q.genero === filtro.g || q.genero === "Unisex"; }
+    function filtrar() {
+      var tipo = filtro.t ? tipos[filtro.t - 1] : null, visibles = 0;
+      cont.querySelectorAll(".tx-card").forEach(function (c) {
+        var q = porId[c.getAttribute("data-id")];
+        c.hidden = !pasaGenero(q) || (tipo && !tipo.es(q));
+        if (!c.hidden) visibles++;
+      });
+      // Cada tipo muestra cuántos modelos tiene con el género elegido; los que quedan en 0 se ocultan.
+      cont.querySelectorAll("[data-t]").forEach(function (b) {
+        var i = +b.getAttribute("data-t");
+        if (!i) return;
+        var n = lista.filter(function (q) { return pasaGenero(q) && tipos[i - 1].es(q); }).length;
+        b.querySelector(".tx-tipo-n").textContent = n;
+        b.hidden = !n && filtro.t !== String(i);
+      });
+      cont.querySelector(".tx-vacio").hidden = visibles > 0;
+    }
+    if (tipos.length) filtrar();
     // Con el mouse, pasar sobre un color también cambia la foto (como en texora.cl).
     cont.addEventListener("mouseover", function (e) {
       var punto = e.target.closest(".tx-punto"), card = punto && punto.closest(".tx-card");
