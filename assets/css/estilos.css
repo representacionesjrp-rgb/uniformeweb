@@ -856,3 +856,49 @@ span.uwc-foto { pointer-events: none; }
 .uwc-pagina .uwc-resumen .uwc-res-est { display: none; } /* el total ya está en el recuadro de abajo */
 .uwc-pagina .uwc-pie:empty { display: none; }
 .uwc-pag:has(> .uwc-pie:empty) { grid-template-columns: minmax(0, 1fr); }
+
+/* ---------- Buscador de productos (assets/js/buscador.js) ---------- */
+.bq-form { position: relative; display: flex; gap: 8px; width: min(620px, 100%); margin: 12px auto 2px; }
+.bq-caja { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 999px; padding: 0 16px; color: var(--t-morado); box-shadow: 0 4px 16px rgba(20, 8, 48, .18); }
+.bq-caja input { flex: 1; min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: var(--texto); padding: 11px 0; }
+.bq-caja input::-webkit-search-cancel-button { cursor: pointer; }
+.bq-caja:focus-within { box-shadow: 0 0 0 3px rgba(255, 255, 255, .55), 0 4px 16px rgba(20, 8, 48, .18); }
+.bq-btn { border: 1.5px solid rgba(255, 255, 255, .85); background: rgba(255, 255, 255, .12); color: #fff; font: inherit; font-weight: 600; font-size: 15px; padding: 0 20px; border-radius: 999px; cursor: pointer; transition: background .2s; }
+.bq-btn:hover { background: rgba(255, 255, 255, .25); }
+.bq-drop { position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 70; background: #fff; color: var(--texto); border-radius: 16px; box-shadow: 0 18px 44px rgba(20, 8, 40, .28); overflow: auto; max-height: min(70vh, 560px); text-align: left; padding: 6px; }
+.bq-drop[hidden] { display: none; }
+.bq-op { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 10px; color: var(--texto); text-decoration: none; }
+.bq-op:hover, .bq-op.bq-activo { background: var(--tx-lila, #f7effb); }
+.bq-it img { width: 52px; height: 52px; flex: none; object-fit: contain; border-radius: 8px; background: var(--tx-lila, #f7effb); mix-blend-mode: multiply; }
+.bq-it span:first-of-type { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bq-it b { font-weight: 600; font-size: .93rem; line-height: 1.3; color: var(--t-azul); }
+.bq-it small { font-size: .78rem; color: var(--gris-texto); }
+.bq-chip { flex: none; font-size: .72rem; font-weight: 600; color: #7b8492; background: var(--fondo-2); border-radius: 999px; padding: .2em .7em; }
+.bq-cats { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 4px 8px; border-bottom: 1px solid var(--borde); margin-bottom: 4px; }
+.bq-cat { padding: 6px 12px; border-radius: 999px; background: var(--tx-lila, #f7effb); font-size: .85rem; color: var(--t-morado); }
+.bq-cat b { font-weight: 600; }
+.bq-cat:hover, .bq-cat.bq-activo { background: var(--t-morado); color: #fff; }
+.bq-todos { justify-content: center; font-weight: 600; font-size: .9rem; color: var(--t-morado); border-top: 1px solid var(--borde); border-radius: 0 0 10px 10px; margin-top: 4px; padding: 12px 10px; }
+.bq-nada { padding: 14px 12px; font-size: .92rem; color: var(--gris-texto); }
+.bq-nada .bq-op { display: inline; padding: 0; color: var(--t-morado); font-weight: 600; }
+@media (max-width: 1020px) {
+  #cabecera > .franja:first-child .bq-form { order: 1; margin-top: 14px; }
+  #cabecera > .franja:first-child .menu { order: 2; }
+}
+@media (max-width: 560px) {
+  .bq-btn { display: none; }
+  .bq-caja input { font-size: 16px; } /* evita el zoom automático en iPhone */
+  .bq-it img { width: 44px; height: 44px; }
+}
+/* Página de resultados (buscar.html) */
+.bq-cabecera { margin-bottom: 30px; }
+.bq-cabecera .titular span { display: inline; }
+.bq-cabecera .tx-intro a { color: var(--t-morado); font-weight: 600; white-space: nowrap; }
+.bq-cats-pag { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 0 0 34px; }
+.tx-card a.tx-card-img { color: inherit; }
+.tx-card-txt h3 a { color: inherit; text-decoration: none; }
+.tx-card-txt h3 a:hover { color: var(--t-morado); }
+a.tx-ver-mas { text-decoration: none; }
+.bq-vacio { text-align: center; color: var(--gris-texto); max-width: 620px; margin: 0 auto 30px; }
+body[data-categoria="buscar"] .cta-cat { display: block; }
+.bq-cats:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 4px; }

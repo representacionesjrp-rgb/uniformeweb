@@ -125,3 +125,19 @@ Debajo del filtro Todos/Hombre/Mujer, cada página muestra los tipos de producto
 Pantalones: Cargo, Jeans, Ejecutivo, Outwork, Térmico…). Salen de las subcategorías que la sincronización lee de
 Texora, así que se mantienen solas. Qué tipos aparecen en cada página y en qué orden se define en la lista `TIPOS`
 al inicio de `pagina()` en `assets/js/texora.js`; un tipo sin modelos no se muestra.
+
+## Buscador de productos
+
+En la cabecera de todas las páginas hay un buscador (escritorio y celular) con las **mismas reglas que el buscador de laropa.cl**.
+Busca en los modelos publicados (`data/texora.js`) y en los nombres de las categorías; no muestra precios.
+
+- Sin mayúsculas ni tildes, ignora palabras como "de", "la", "para", "con", y pasa los plurales al singular ("pantalones" = "pantalón").
+- Todas las palabras deben calzar con el inicio de una palabra del nombre, de la categoría o del código ("pant carg" encuentra "Pantalón Cargo").
+- Sinónimos: piqué / pike / camisero = poleras polo (cuello camisero); camiseta / remera = polera; "cuello redondo" o "t-shirt" = poleras sin cuello polo.
+- Mujer, dama, femenino… filtra los modelos de mujer (y unisex); hombre, varón… los de hombre.
+- Un código (por ejemplo `01014`) con Enter abre directo la ficha del producto.
+- Orden: código exacto, disponibles antes que agotados, los que tienen todas las palabras en el nombre, hombre/unisex primero (mujer primero si se pide mujer).
+- Mientras se escribe (desde 2 letras) muestra hasta 7 sugerencias, las categorías que calzan y "Ver todos los resultados", que abre `buscar.html?q=…`.
+  Ahí, con varias palabras, se ofrece "Ver productos con cualquiera de las palabras".
+
+Archivos: `assets/js/buscador.js`, `buscar.html` y el bloque "Buscador de productos" al final de `assets/css/estilos.css`.

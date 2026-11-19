@@ -240,6 +240,11 @@
     });
     var m = location.hash.match(/^#p-(\d+)$/);
     if (m && porId[m[1]]) abrir(porId[m[1]]);
+    // El buscador de la cabecera cambia el #p-… para abrir una ficha de esta misma página.
+    window.addEventListener("hashchange", function () {
+      var h = location.hash.match(/^#p-(\d+)$/);
+      if (h && porId[h[1]]) abrir(porId[h[1]]);
+    });
   }
 
   /* --- Versión hombre / mujer ------------------------------------------ */
