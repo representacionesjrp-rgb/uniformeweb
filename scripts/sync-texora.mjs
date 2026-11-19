@@ -27,7 +27,7 @@ const HEADERS = {
 
 const SUBCATS = [15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,43,44,45,46,47,48,49,50,51];
 const EXCLUDE_SUBCATS = new Set([45]); // rodilleras
-const EXCLUDE_IDS = new Set([]);       // id de Texora de productos que Uniformeweb no quiere mostrar
+const EXCLUDE_IDS = new Set([777, 778]); // 777 = 03179, 778 = 03159 (micropolares retirados). id de Texora de productos que Uniformeweb no quiere mostrar
 const EXCLUDE_NAME = /rodill|zapat|bot[ií]n|botas?\b|calzado|guante|casco|lente|protector/i;
 const SUB_LABEL = { 'Termica': 'Térmicas', 'Termico': 'Térmicos', 'Hi-Vis': 'Alta visibilidad', 'Polar y Micropolar': 'Polar y micropolar', 'Ignifuga': 'Ignífuga', 'Antiestatico': 'Antiestática', 'Antiacido': 'Antiácida', 'Geologos': 'Chalecos geólogo', 'Primeras Capas': 'Primeras capas', 'Poleras Polo': 'Poleras polo', 'Jockey': 'Jockeys' };
 
