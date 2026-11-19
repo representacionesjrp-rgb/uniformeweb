@@ -87,6 +87,19 @@ colores, tallas, guía de tallas, ficha en PDF y disponibilidad. Al tocar un mod
 - Las fotos, guías de tallas y fichas PDF se cargan directamente desde texora.cl.
 - Para actualizar a mano (Node 18 o superior): `node scripts/sync-texora.mjs`
 
+### Orden: del más económico al más costoso
+
+En todas las páginas de categoría, en sus filtros (Hombre/Mujer y tipos) y en la página de resultados del buscador, los modelos
+van del más económico al más costoso. **No se publican precios**: la sincronización diaria pide al cotizador (`/api/orden-web`,
+con la clave `STOCK_KEY`) el precio de Uniformeweb de cada código (el mismo que ven los vendedores, tramo más chico), ordena
+`data/texora.js` y descarta los precios.
+
+- Mismo precio: las versiones Hombre y Mujer de un modelo quedan juntas (Hombre o Unisex primero).
+- Productos sin precio en la lista de Uniformeweb: al final, ordenados por el precio de Texora.
+- Si el cotizador no responde, se ordena por el precio de Texora y la ejecución muestra un aviso.
+- Tras cambiar precios en el cotizador, para reordenar al tiro sin esperar al día siguiente: `node scripts/sync-texora.mjs --solo-orden`
+  (con `STOCK_URL` y `STOCK_KEY`).
+
 ## Modo cotizador ("Mi cotización")
 
 Cada visitante arma su propia cotización mientras navega, sin crear cuenta:
@@ -136,7 +149,8 @@ Busca en los modelos publicados (`data/texora.js`) y en los nombres de las categ
 - Sinónimos: piqué / pike / camisero = poleras polo (cuello camisero); camiseta / remera = polera; "cuello redondo" o "t-shirt" = poleras sin cuello polo.
 - Mujer, dama, femenino… filtra los modelos de mujer (y unisex); hombre, varón… los de hombre.
 - Un código (por ejemplo `01014`) con Enter abre directo la ficha del producto.
-- Orden: código exacto, disponibles antes que agotados, los que tienen todas las palabras en el nombre, hombre/unisex primero (mujer primero si se pide mujer).
+- Orden de las sugerencias: código exacto, disponibles antes que agotados, los que tienen todas las palabras en el nombre, hombre/unisex primero (mujer primero si se pide mujer).
+- En la página de resultados (`buscar.html`) los modelos van del más económico al más costoso, como en el resto del sitio (el código exacto, primero).
 - Mientras se escribe (desde 2 letras) muestra hasta 7 sugerencias, las categorías que calzan y "Ver todos los resultados", que abre `buscar.html?q=…`.
   Ahí, con varias palabras, se ofrece "Ver productos con cualquiera de las palabras".
 
