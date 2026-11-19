@@ -6,10 +6,9 @@
      formulario o por WhatsApp.
    - Vendedores: abrir el sitio con ?vendedor=1 activa el modo vendedor en ese
      navegador (?vendedor=0 lo apaga). Suma "Abrir en el cotizador" (si
-     UW.cotizadorUrl está configurado en config.js), "Copiar resumen" y la
-     disponibilidad por talla (stock) de cada modelo, solo como referencia. Si el
-     vendedor inició sesión en el cotizador, se ven las unidades exactas (las entrega
-     el cotizador privado, nunca el sitio público).
+     UW.cotizadorUrl está configurado en config.js) y "Copiar resumen". Si el
+     vendedor inició sesión en el cotizador, la ficha muestra las unidades exactas por
+     talla y los precios por tramo (los entrega el cotizador privado, nunca el sitio público).
    La lista se guarda en el navegador, así que sigue igual al cambiar de página.
    Normalmente no necesita editar este archivo.
    ========================================================================= */
@@ -46,9 +45,9 @@
       .then(function (d) {
         stock = d && d.productos && Object.keys(d.productos).length ? d.productos : false;
         stockFecha = (d && d.actualizado) || "";
-        pintar();
+        stockFicha();
       })
-      .catch(function () { stock = false; pintar(); });
+      .catch(function () { stock = false; stockFicha(); });
   }
   function baseCot() { return String(UW.cotizadorUrl || "").replace(/\/+$/, ""); }
   function clp(n) { return "$" + String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
@@ -145,6 +144,7 @@
   document.addEventListener("uw:ficha", function (e) {
     fichaAbierta = e.detail && e.detail.producto ? e.detail : null;
     preciosFicha();
+    stockFicha();
   });
 
   function unidades(p, color, talla) {
@@ -380,16 +380,6 @@
       if (s) s.textContent = total(it) + " un.";
       resumen();
     });
-    panel.addEventListener("change", function (e) {
-      var t = e.target;
-      if (!t.classList.contains("uwc-color")) return;
-      var linea = t.closest("[data-clave]"), it = linea && buscar(linea.getAttribute("data-clave"));
-      var p = it && producto(it.id);
-      if (!p) return;
-      // Solo vendedores: cambia el color cuyo stock se muestra (no va en la cotización).
-      it.verColor = t.value;
-      persistir(); pintar();
-    });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && panel.classList.contains("abierto")) cerrar();
     });
@@ -404,42 +394,40 @@
     return null;
   }
 
-  // Solo modo vendedor: disponibilidad por talla del color elegido (referencia).
-  function stockHTML(p, color) {
-    var tallas = tallasDe(p, color);
-    if (!p || !tallas.length) return "";
-    var sinDetalle = !p.det, conUnidades = false;
-    var items = tallas.map(function (t) {
-      var e = sinDetalle ? (p.disp === "A" ? "A" : "") : estadoTalla(p, color, t);
-      var u = unidades(p, color, t), txt = NOMBRE_ESTADO[e] || "Consultar";
-      if (u != null) {
-        conUnidades = true;
-        if (typeof u === "number") { txt = u + " un."; e = u <= 0 ? "A" : u < 20 ? "U" : "D"; }
-        else if (/^\+/.test(u)) { txt = "Más de " + u.slice(1); e = "D"; }
-        else if (/^P/.test(u)) { txt = "Llega " + u.slice(2, 7); e = "P"; }
-      }
-      var clase = { D: "disp", U: "ultimas", A: "agotada", P: "proximo" }[e] || "sin";
-      return '<li class="uwc-st-' + clase + '" title="' + esc(txt) + '"><b>' + esc(t) + "</b><span>" + esc(txt) + "</span></li>";
-    }).join("");
-    var nota = conUnidades ? (stockFecha ? '<small class="uwc-stock-nota">Unidades al ' + esc(new Date(stockFecha).toLocaleDateString("es-CL")) + "</small>" : "") :
-      stock === false && UW.cotizadorUrl ? '<small class="uwc-stock-nota"><a href="' + esc(String(UW.cotizadorUrl).replace(/\/+$/, "")) + '/login" target="_blank" rel="noopener">Inicia sesión en el cotizador</a> para ver las unidades exactas.</small>' : "";
-    return '<div class="uwc-stock"><span class="uwc-stock-tit">Stock' + (color ? " en " + esc(color.toLowerCase()) : "") + "</span><ul>" +
-      items + "</ul>" + nota + "</div>";
+  // Solo modo vendedor: en la ficha, las tallas muestran las unidades exactas
+  // (si hay sesión en el cotizador). En Mi cotización ya no se repite el stock.
+  function stockFicha() {
+    if (!vendedor || !fichaAbierta) return;
+    var caja = fichaAbierta.panel, p = fichaAbierta.producto, t = caja && caja.querySelector(".tx-tallas");
+    if (!t || !p) return;
+    var nom = caja.querySelector(".tx-color-nombre"), color = nom ? nom.textContent.trim() : fichaAbierta.color;
+    var con = false;
+    t.querySelectorAll("li").forEach(function (li) {
+      var b = li.querySelector("b"), sp = li.querySelector("span"), u = b && unidades(p, color, b.textContent.trim()), txt = null;
+      if (u == null || !sp) return;
+      if (typeof u === "number") txt = u + " un.";
+      else if (/^\+/.test(u)) txt = "Más de " + u.slice(1);
+      else if (/^P/.test(u)) txt = "Llega " + u.slice(2, 7);
+      if (txt) { sp.textContent = txt; li.title = txt; con = true; }
+    });
+    var n = t.querySelector(".uwc-stock-nota");
+    if (n) n.remove();
+    n = document.createElement("small");
+    n.className = "uwc-stock-nota";
+    if (con) n.textContent = "Unidades exactas" + (stockFecha ? " al " + new Date(stockFecha).toLocaleDateString("es-CL") : "") + " (solo vendedores).";
+    else if (stock === false && UW.cotizadorUrl) n.innerHTML = enlaceSesion("para ver las unidades exactas por talla.");
+    else return;
+    t.appendChild(n);
   }
   function lineaHTML(it) {
     var p = producto(it.id);
-    var verColor = it.verColor || ((p && p.colores && p.colores[0]) || [""])[0];
-    var colores = vendedor && p && p.colores && p.colores.length > 1 ?
-      '<label class="uwc-campo">Ver stock del color <select class="uwc-color">' + p.colores.map(function (c) {
-        return '<option' + (c[0] === verColor ? " selected" : "") + ">" + esc(c[0]) + "</option>";
-      }).join("") + "</select></label>" : "";
     var cant = '<label class="uwc-campo uwc-total">Cantidad total <input class="uwc-total-in" type="number" inputmode="numeric" min="0" step="1" value="' +
       (entero(it.cantidad) || "") + '" placeholder="0"></label>';
     return '<li class="uwc-linea" data-clave="' + esc(it.clave) + '">' +
       '<a class="uwc-foto" href="' + esc(it.url || "#") + '">' + (it.foto ? '<img src="' + esc(it.foto) + '" alt="" loading="lazy">' : "") + "</a>" +
       '<div class="uwc-datos">' +
         '<div class="uwc-nombre"><a href="' + esc(it.url || "#") + '">' + esc(it.nombre) + '</a><small>Cód. ' + esc(it.sku) + "</small></div>" +
-        cant + colores + (vendedor ? stockHTML(p, verColor) : "") +
+        cant +
         '<div class="uwc-fila">' +
           '<label class="uwc-check"><input type="checkbox" class="uwc-logo-in"' + (it.logo ? " checked" : "") + "> Con logo</label>" +
           '<span class="uwc-suma">' + total(it) + " un.</span>" +
