@@ -5,8 +5,8 @@
      quiere (sin color ni talla), se marca si lleva logo y se envía por el
      formulario o por WhatsApp.
    - Vendedores: abrir el sitio con ?vendedor=1 activa el modo vendedor en ese
-     navegador (?vendedor=0 lo apaga). Suma "Abrir en el cotizador" (si
-     UW.cotizadorUrl está configurado en config.js) y "Copiar resumen". Si el
+     navegador (?vendedor=0 lo apaga). En Mi cotización solo
+     muestra "Abrir en el cotizador" (si UW.cotizadorUrl está configurado en config.js). Si el
      vendedor inició sesión en el cotizador, la ficha muestra las unidades exactas por
      talla y los precios por tramo (los entrega el cotizador privado, nunca el sitio público).
      Con esa sesión, Mi cotización también tiene un buscador para agregar cualquier
@@ -460,7 +460,6 @@
       if (t.closest(".uwc-quitar") && it) { lista.splice(lista.indexOf(it), 1); persistir(); pintar(); return; }
       if (t.closest(".uwc-vaciar")) { if (window.confirm("¿Vaciar tu cotización?")) { lista = []; persistir(); pintar(); } return; }
       if (t.closest(".uwc-enviar")) return alFormulario();
-      if (t.closest(".uwc-copiar")) return copiar(t.closest(".uwc-copiar"));
       var res = t.closest(".uwc-res-item");
       if (res) return agregarSku(res.getAttribute("data-sku"));
     });
@@ -580,11 +579,11 @@
     pieP.innerHTML =
       '<div class="uwc-resumen"></div>' +
       '<div class="uwc-acciones">' +
-        '<button type="button" class="btn btn-acento uwc-enviar">Enviar solicitud de cotización</button>' +
-        '<a class="btn btn-wa uwc-wa" target="_blank" rel="noopener">' + (UW.iconWA || "") + " Enviar por WhatsApp</a>" +
-        (vendedor ?
-          (UW.cotizadorUrl ? '<a class="btn btn-borde uwc-cotizador" target="_blank" rel="noopener">Abrir en el cotizador</a>' : "") +
-          '<button type="button" class="btn btn-borde uwc-copiar">Copiar resumen</button>' : "") +
+        // Modo vendedor: solo "Abrir en el cotizador" (sin enviar solicitud, WhatsApp ni copiar resumen).
+        (vendedor && UW.cotizadorUrl ?
+          '<a class="btn btn-acento uwc-cotizador" target="_blank" rel="noopener">Abrir en el cotizador</a>' :
+          '<button type="button" class="btn btn-acento uwc-enviar">Enviar solicitud de cotización</button>' +
+          '<a class="btn btn-wa uwc-wa" target="_blank" rel="noopener">' + (UW.iconWA || "") + " Enviar por WhatsApp</a>") +
         '<button type="button" class="uwc-link uwc-vaciar">Vaciar cotización</button>' +
       "</div>";
     resumen();
@@ -680,12 +679,6 @@
     var n = document.getElementById("f-nombre");
     if (n) n.focus({ preventScroll: true });
     aviso("Revisa tus datos y presiona Enviar");
-  }
-  function copiar(b) {
-    var t = texto() + (UW.cotizadorUrl ? "\n" + urlCotizador() : "");
-    var listo = function () { b.textContent = "Copiado ✓"; setTimeout(function () { b.textContent = "Copiar resumen"; }, 1800); };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(listo, function () { window.prompt("Copia el resumen:", t); });
-    else window.prompt("Copia el resumen:", t);
   }
 
   /* --- Abrir / cerrar -------------------------------------------------------- */
