@@ -34,6 +34,7 @@
     if (m) guardar(CLAVE_V, m[1]);
   })();
   var vendedor = leer(CLAVE_V) === "1";
+  if (vendedor) document.documentElement.classList.add("uwc-vendedor");
 
   /* --- Stock exacto (solo vendedores con sesión en el cotizador) ------------- */
   // null = sin consultar, false = sin sesión o sin datos, objeto = unidades por talla.
@@ -62,9 +63,10 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         precios = d && d.p && d.tramos && d.logo ? d : false;
+        estadoFranja();
         pintar(); preciosTarjetas(); preciosFicha();
       })
-      .catch(function () { precios = false; pintar(); preciosFicha(); });
+      .catch(function () { precios = false; estadoFranja(); pintar(); preciosFicha(); });
   }
   function preciosDe(sku) { return precios && sku != null ? precios.p[String(sku).toUpperCase()] || null : null; }
   // Mismo cálculo que La Ropa: el tramo es el más alto cuyo mínimo alcanza el total
@@ -332,7 +334,27 @@
 
   /* --- Interfaz ------------------------------------------------------------- */
   var boton, panel, cuerpo, pieP, toast;
+  // Franja fija arriba que avisa al ejecutivo que está en modo cotizador.
+  var franja;
+  function crearFranja() {
+    if (!vendedor) return;
+    franja = document.createElement("div");
+    franja.className = "uwc-franja";
+    franja.setAttribute("role", "status");
+    document.body.insertBefore(franja, document.body.firstChild);
+    franja.addEventListener("click", function (e) {
+      if (e.target.closest(".uwc-franja-salir")) { guardar(CLAVE_V, "0"); location.href = location.pathname; }
+    });
+    estadoFranja();
+  }
+  function estadoFranja() {
+    if (!franja) return;
+    var est = precios ? "Sesión del cotizador activa: ves precios y stock" :
+      precios === false && UW.cotizadorUrl ? enlaceSesion("para ver precios y stock") : "Conectando con el cotizador…";
+    franja.innerHTML = "<b>MODO COTIZADOR</b><span>" + est + '</span><button type="button" class="uwc-franja-salir">Salir</button>';
+  }
   function crear() {
+    crearFranja();
     boton = document.createElement("button");
     boton.type = "button";
     boton.className = "uwc-boton";

@@ -766,3 +766,14 @@ article.tx-card { container-type: inline-size; }
 @media (prefers-reduced-motion: reduce) {
   .wa-flotante, .wa-f-icono svg, .wa-f-icono::before, .wa-f-icono::after, .opcion-wa-icono::after, .opcion-wa-icono svg { animation: none !important; }
 }
+
+/* Franja "MODO COTIZADOR" (solo ejecutivos con ?vendedor=1), siempre visible arriba */
+.uwc-franja { position: fixed; top: 0; left: 0; right: 0; z-index: 200; height: 34px; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 0 12px; background: var(--degradado, linear-gradient(90deg, #e2146c, #7a1db8, #3a2fd0)); color: #fff; font-size: .82rem; line-height: 1.2; box-shadow: 0 2px 10px rgba(20, 8, 40, .25); }
+.uwc-franja b { letter-spacing: .12em; font-size: .85rem; white-space: nowrap; }
+.uwc-franja span { opacity: .92; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.uwc-franja a { color: #fff; font-weight: 700; }
+.uwc-franja-salir { flex: none; border: 0; border-radius: 999px; background: #fff; color: var(--uwc-1, #8c0fb8); font: inherit; font-weight: 700; padding: .2em .8em; cursor: pointer; }
+html.uwc-vendedor body { padding-top: 34px; }
+html.uwc-vendedor #cabecera { top: 34px; }
+html.uwc-vendedor .tx-ficha, html.uwc-vendedor .uwc-capa, html.uwc-vendedor .uwc-cant-capa, html.uwc-vendedor .visor { top: 34px; }
+@media (max-width: 560px) { .uwc-franja span { display: none; } }
