@@ -92,8 +92,8 @@ colores, tallas, guía de tallas, ficha en PDF y disponibilidad. Al tocar un mod
 Cada visitante arma su propia cotización mientras navega, sin crear cuenta:
 
 - **+ Cotizar** sobre la foto de cada modelo lo agrega sin abrir la ficha; en la ficha, **Agregar a mi cotización** agrega el color elegido.
-- El botón **Mi cotización** (abajo a la izquierda) abre el panel: se cambia el color (cambia la foto), se pone la **cantidad total**
-  (las tallas no se piden al cotizar), se marca **Con logo** y se agregan comentarios. La lista se guarda en el navegador y sigue al cambiar de página.
+- El botón **Mi cotización** (abajo a la izquierda) abre el panel: se pone la **cantidad total**
+  (al agregar un producto solo se pregunta cuántas unidades; no se pide color ni talla), se marca **Con logo** y se agregan comentarios. La lista se guarda en el navegador y sigue al cambiar de página.
 - **Enviar solicitud de cotización** llena el formulario del pie con el detalle; también se puede enviar por WhatsApp.
   Al llegar a `gracias.html` la lista se vacía.
 

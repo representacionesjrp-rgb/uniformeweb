@@ -1,8 +1,9 @@
 /* =========================================================================
    UNIFORMEWEB · Modo cotizador ("Mi cotización")
    - Cualquier visitante arma su lista con "+ Cotizar" en las tarjetas o
-     "Agregar a mi cotización" en la ficha, elige color, cantidad total y logo,
-     y la envía por el formulario o por WhatsApp. Las tallas no se piden.
+     "Agregar a mi cotización" en la ficha: solo se pregunta cuántas unidades
+     quiere (sin color ni talla), se marca si lleva logo y se envía por el
+     formulario o por WhatsApp.
    - Vendedores: abrir el sitio con ?vendedor=1 activa el modo vendedor en ese
      navegador (?vendedor=0 lo apaga). Suma "Abrir en el cotizador" (si
      UW.cotizadorUrl está configurado en config.js), "Copiar resumen" y la
@@ -67,6 +68,17 @@
     it.tallas = {};
     delete it.soloTotal;
   });
+  // Versión anterior: una línea por color. Ahora una sola línea por producto.
+  (function () {
+    var porId = {}, nueva = [];
+    lista.forEach(function (it) {
+      var k = String(it.id), u = porId[k];
+      if (u) { u.cantidad = (parseInt(u.cantidad, 10) || 0) + (parseInt(it.cantidad, 10) || 0); u.logo = u.logo || it.logo; return; }
+      it.clave = k; it.verColor = it.verColor || it.color || ""; delete it.color;
+      porId[k] = it; nueva.push(it);
+    });
+    lista = nueva;
+  })();
   // Después de enviar el formulario (página gracias.html) la lista se vacía.
   if (/gracias\.html$/.test(location.pathname)) {
     lista = []; persistir(); guardar(CLAVE + "-obs", "");
@@ -112,23 +124,64 @@
   var NOMBRE_ESTADO = { D: "Disponible", U: "Últimas unidades", A: "Agotado", P: "Próximamente" };
 
   /* --- API pública (la usa texora.js si existe) ---------------------------- */
+  // Pregunta cuántas unidades y agrega el producto (sin color ni talla).
   function agregar(p, color, abrirPanel) {
     if (!p) return;
     color = color || ((p.colores || [])[0] || [""])[0];
-    var clave = p.id + "|" + color, existente = null;
-    lista.forEach(function (it) { if (it.clave === clave) existente = it; });
-    if (!existente) {
-      existente = {
-        clave: clave, id: p.id, sku: p.sku, nombre: p.nombre, color: color,
-        foto: fotoDe(p, color), url: pagina(p), cantidad: 0, logo: true
+    var clave = String(p.id), existente = buscar(clave);
+    pedirCantidad(p, color, existente ? entero(existente.cantidad) : 0, function (n) {
+      if (!existente) {
+        existente = {
+          clave: clave, id: p.id, sku: p.sku, nombre: p.nombre, verColor: color,
+          foto: fotoDe(p, color), url: pagina(p), cantidad: 0, logo: true
+        };
+        lista.push(existente);
+      }
+      existente.cantidad = n;
+      persistir();
+      pintar();
+      pulso();
+      if (abrirPanel === true) abrir(clave);
+      else aviso(n + (n === 1 ? " unidad" : " unidades") + " de " + p.nombre + " en tu cotización");
+    });
+  }
+
+  /* --- Ventana "¿Cuántas unidades?" ------------------------------------------ */
+  var dlg, dlgListo = null, dlgAntes = null;
+  function pedirCantidad(p, color, actual, listo) {
+    if (!dlg) {
+      dlg = document.createElement("div");
+      dlg.className = "uwc-cant-capa";
+      dlg.innerHTML = '<form class="uwc-cant" role="dialog" aria-modal="true" aria-labelledby="uwc-cant-t">' +
+        '<div class="uwc-cant-prod"><img alt=""><div><b class="uwc-cant-n"></b><small class="uwc-cant-c"></small></div></div>' +
+        '<label id="uwc-cant-t" for="uwc-cant-in">¿Cuántas unidades quieres cotizar?</label>' +
+        '<input id="uwc-cant-in" type="number" inputmode="numeric" min="1" step="1" required placeholder="Ej.: 50">' +
+        '<div class="uwc-cant-btns"><button type="button" class="btn btn-borde uwc-cant-no">Cancelar</button>' +
+        '<button type="submit" class="btn btn-acento">Agregar a mi cotización</button></div></form>';
+      document.body.appendChild(dlg);
+      var cerrarDlg = function () {
+        dlg.classList.remove("abierto"); dlgListo = null;
+        if (dlgAntes && dlgAntes.focus) try { dlgAntes.focus({ preventScroll: true }); } catch (e) {}
       };
-      lista.push(existente);
+      dlg.addEventListener("click", function (e) { if (e.target === dlg || e.target.closest(".uwc-cant-no")) cerrarDlg(); });
+      dlg.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.stopPropagation(); cerrarDlg(); } });
+      dlg.querySelector("form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var n = entero(dlg.querySelector("input").value);
+        if (!n) { dlg.querySelector("input").focus(); return; }
+        var f = dlgListo; cerrarDlg(); if (f) f(n);
+      });
     }
-    persistir();
-    pintar();
-    pulso();
-    if (abrirPanel !== false) abrir(clave);
-    else aviso(p.nombre + (color ? " (" + color.toLowerCase() + ")" : "") + " agregado a tu cotización");
+    dlgAntes = document.activeElement;
+    dlgListo = listo;
+    var img = dlg.querySelector("img"), src = fotoDe(p, color);
+    img.src = src || ""; img.hidden = !src;
+    dlg.querySelector(".uwc-cant-n").textContent = p.nombre;
+    dlg.querySelector(".uwc-cant-c").textContent = "Cód. " + (p.sku || "");
+    var inp = dlg.querySelector("input");
+    inp.value = actual || "";
+    dlg.classList.add("abierto");
+    setTimeout(function () { inp.focus(); inp.select(); }, 30);
   }
   window.UWCotizador = { agregar: agregar, abrir: function () { abrir(); }, lista: function () { return lista.slice(); } };
 
@@ -150,7 +203,7 @@
       '<aside class="uwc-panel" role="dialog" aria-modal="true" aria-labelledby="uwc-titulo" tabindex="-1">' +
         '<header class="uwc-cab">' +
           '<div><h2 id="uwc-titulo">Mi cotización</h2>' +
-          (vendedor ? '<span class="uwc-modo">Modo vendedor <button type="button" class="uwc-salir">Salir</button></span>' : '<p>Elige color, cantidad y si lleva tu logo. Te respondemos en máximo 24 horas.</p>') +
+          (vendedor ? '<span class="uwc-modo">Modo vendedor <button type="button" class="uwc-salir">Salir</button></span>' : '<p>Indica cuántas unidades y si lleva tu logo. Te respondemos en máximo 24 horas.</p>') +
           "</div>" +
           '<button type="button" class="uwc-x" aria-label="Cerrar">×</button>' +
         "</header>" +
@@ -188,10 +241,9 @@
       var linea = t.closest("[data-clave]"), it = linea && buscar(linea.getAttribute("data-clave"));
       var p = it && producto(it.id);
       if (!p) return;
-      var nueva = p.id + "|" + t.value;
-      if (buscar(nueva)) { aviso("Ese color ya está en tu cotización"); t.value = it.color; return; }
-      it.color = t.value; it.clave = nueva; it.foto = fotoDe(p, t.value);
-      persistir(); pintar(nueva);
+      // Solo vendedores: cambia el color cuyo stock se muestra (no va en la cotización).
+      it.verColor = t.value;
+      persistir(); pintar();
     });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && panel.classList.contains("abierto")) cerrar();
@@ -231,18 +283,18 @@
   }
   function lineaHTML(it) {
     var p = producto(it.id);
-    var colores = p && p.colores && p.colores.length > 1 ?
-      '<label class="uwc-campo">Color <select class="uwc-color">' + p.colores.map(function (c) {
-        return '<option' + (c[0] === it.color ? " selected" : "") + ">" + esc(c[0]) + "</option>";
-      }).join("") + "</select></label>" :
-      (it.color ? '<span class="uwc-campo">Color <b>' + esc(it.color) + "</b></span>" : "");
+    var verColor = it.verColor || ((p && p.colores && p.colores[0]) || [""])[0];
+    var colores = vendedor && p && p.colores && p.colores.length > 1 ?
+      '<label class="uwc-campo">Ver stock del color <select class="uwc-color">' + p.colores.map(function (c) {
+        return '<option' + (c[0] === verColor ? " selected" : "") + ">" + esc(c[0]) + "</option>";
+      }).join("") + "</select></label>" : "";
     var cant = '<label class="uwc-campo uwc-total">Cantidad total <input class="uwc-total-in" type="number" inputmode="numeric" min="0" step="1" value="' +
       (entero(it.cantidad) || "") + '" placeholder="0"></label>';
     return '<li class="uwc-linea" data-clave="' + esc(it.clave) + '">' +
       '<a class="uwc-foto" href="' + esc(it.url || "#") + '">' + (it.foto ? '<img src="' + esc(it.foto) + '" alt="" loading="lazy">' : "") + "</a>" +
       '<div class="uwc-datos">' +
         '<div class="uwc-nombre"><a href="' + esc(it.url || "#") + '">' + esc(it.nombre) + '</a><small>Cód. ' + esc(it.sku) + "</small></div>" +
-        colores + cant + (vendedor ? stockHTML(p, it.color) : "") +
+        cant + colores + (vendedor ? stockHTML(p, verColor) : "") +
         '<div class="uwc-fila">' +
           '<label class="uwc-check"><input type="checkbox" class="uwc-logo-in"' + (it.logo ? " checked" : "") + "> Con logo</label>" +
           '<span class="uwc-suma">' + total(it) + " un.</span>" +
@@ -302,7 +354,7 @@
   function texto() {
     var obs = (leer(CLAVE + "-obs") || "").trim();
     return lista.map(function (it) {
-      return "- " + it.nombre + " (cód. " + it.sku + ")" + (it.color ? ", color " + it.color.toLowerCase() : "") +
+      return "- " + it.nombre + " (cód. " + it.sku + ")" +
         ": " + (total(it) ? total(it) + " un." : "cantidad por definir") +
         (it.logo ? ", con logo" : ", sin logo");
     }).join("\n") + (obs ? "\nComentarios: " + obs : "");
@@ -311,7 +363,7 @@
     var base = String(UW.cotizadorUrl || "").replace(/\/+$/, "");
     if (!base) return "";
     return base + "/cotizaciones?" + lista.map(function (it) {
-      var det = [it.color ? "Color " + it.color : "", it.logo ? "Con logo" : ""].filter(Boolean).join("; ");
+      var det = it.logo ? "Con logo" : "";
       return "p=" + encodeURIComponent(it.sku + "|" + total(it) + "|" + det);
     }).join("&");
   }
@@ -400,9 +452,6 @@
     var c = s.closest("[data-id]"), p = producto(c && c.getAttribute("data-id"));
     var ic = c && c.getAttribute("data-color"), col = p && ic != null && p.colores && p.colores[+ic];
     agregar(p, col ? col[0] : null, false);
-    s.textContent = "✓ Agregado";
-    s.classList.add("ok");
-    setTimeout(function () { s.textContent = "+ Cotizar"; s.classList.remove("ok"); }, 1600);
   }
   // Botón "Agregar a mi cotización" de la ficha: si texora.js no llama a
   // UWCotizador.agregar, se intercepta aquí con el producto y color abiertos.
