@@ -95,7 +95,10 @@
     flot.target = "_blank";
     flot.rel = "noopener";
     flot.setAttribute("aria-label", "Hablemos por WhatsApp");
-    flot.innerHTML = '<img src="' + img("c6eba2_64cab35510c8455f92f1328decaabf7d~mv2.png", 700) + '" alt="Hablemos por: WhatsApp" width="370" height="95">';
+    // Botón dibujado con SVG y texto (no imagen), para que se vea nítido en
+    // cualquier pantalla. Las animaciones están en estilos.css (.wa-flotante).
+    flot.innerHTML = '<span class="wa-f-icono">' + ICON_WA + "</span>" +
+      '<span class="wa-f-txt"><small>Hablemos por</small><strong>WhatsApp</strong></span>';
     document.body.appendChild(flot);
   }
 
@@ -134,9 +137,22 @@
     if (!c || !el) return;
     var h = "";
     if (c.subcategorias) {
-      h = '<div class="grid-tarjetas" data-tarjetas="' + c.subcategorias.join(",") + '"></div>';
-      el.innerHTML = h;
-      tarjetas();
+      // Página que agrupa opciones (ej. Chaquetas): una tarjeta grande por
+      // opción y, al final, una tarjeta de WhatsApp que completa la fila.
+      el.innerHTML = '<div class="grid-opciones">' + c.subcategorias.map(cat).filter(Boolean).map(function (s) {
+        return '<a class="opcion" href="' + s.id + '.html">' +
+          '<span class="opcion-img"><img loading="lazy" src="' + img(s.portada, 900) + '" alt="' + esc(s.nombre) + '"' +
+          (s.encuadre ? ' style="object-position:' + esc(s.encuadre) + '"' : "") + "></span>" +
+          '<span class="opcion-txt"><strong>' + esc(s.nombre) + "</strong><small>" + esc(s.descripcion) + "</small>" +
+          '<span class="opcion-ver">Ver modelos <span aria-hidden="true">→</span></span></span></a>';
+      }).join("") +
+        '<a class="opcion opcion-wa" href="' + waLink("Hola Uniformeweb, quiero cotizar " + c.nombre.toLowerCase() + " con mi logo.") + '" target="_blank" rel="noopener">' +
+          '<span class="opcion-wa-icono">' + ICON_WA + "</span>" +
+          "<strong>¿No sabes cuál elegir?</strong>" +
+          "<small>Te asesoramos por WhatsApp y te enviamos tu cotización en máximo 24 horas.</small>" +
+          '<span class="opcion-wa-btn">' + ICON_WA + " Escríbenos</span>" +
+          '<span class="opcion-wa-num">' + esc(UW.whatsappTexto) + "</span></a>" +
+        "</div>";
       return;
     }
     c.secciones.forEach(function (s) {
