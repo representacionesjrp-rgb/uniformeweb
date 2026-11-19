@@ -524,31 +524,6 @@
     if (n) n.remove();
     n = document.createElement("small");
     n.className = "uwc-stock-nota";
-    var g = caja.querySelector(".uwc-grilla");
-    if (g) g.remove();
-    var sp = stock && stock[p.id];
-    if (sp && Object.keys(sp).length) {
-      // Grilla color x talla con las unidades de todos los colores.
-      var colores = Object.keys(sp), tallas = [];
-      colores.forEach(function (c) { Object.keys(sp[c]).forEach(function (tl) { if (tallas.indexOf(tl) < 0) tallas.push(tl); }); });
-      var celda = function (u) {
-        if (u == null) return "<td>–</td>";
-        if (typeof u === "number") return '<td class="' + (u <= 0 ? "cero" : u < 20 ? "poco" : "") + '">' + u + "</td>";
-        if (/^\+/.test(u)) return "<td>+" + esc(u.slice(1)) + "</td>";
-        if (/^P/.test(u)) return '<td class="poco">Llega ' + esc(u.slice(2, 7)) + "</td>";
-        return "<td>" + esc(u) + "</td>";
-      };
-      g = document.createElement("div");
-      g.className = "uwc-grilla";
-      g.innerHTML = "<h3>Stock por color y talla (unidades)</h3><div><table><thead><tr><th>Color</th>" +
-        tallas.map(function (tl) { return "<th>" + esc(tl) + "</th>"; }).join("") + "<th>Total</th></tr></thead><tbody>" +
-        colores.map(function (c) {
-          var tot = 0;
-          tallas.forEach(function (tl) { if (typeof sp[c][tl] === "number") tot += Math.max(0, sp[c][tl]); });
-          return "<tr" + (c === color ? ' class="actual"' : "") + "><th>" + esc(c) + "</th>" + tallas.map(function (tl) { return celda(sp[c][tl]); }).join("") + "<td><b>" + tot + "</b></td></tr>";
-        }).join("") + "</tbody></table></div>";
-      t.parentNode.insertBefore(g, t.nextSibling);
-    }
     if (con) n.textContent = "Unidades exactas" + (stockFecha ? " al " + new Date(stockFecha).toLocaleDateString("es-CL") : "") + " (solo vendedores).";
     else if (stock === false && precios) n.textContent = "Las unidades exactas aparecerán cuando se active la sincronización diaria con Texora.";
     else if (stock === false && precios === false && UW.cotizadorUrl) n.innerHTML = enlaceSesion("para ver precios y unidades exactas.");
