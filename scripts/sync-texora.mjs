@@ -13,12 +13,16 @@
 //                                  (STOCK_SYNC_KEY en Railway). Con sesión de distribuidor, se le envían las
 //                                  unidades exactas por color y talla. No se publican en el sitio: solo las
 //                                  ven los vendedores que iniciaron sesión en el cotizador.
+//                                  Con la misma clave se piden al cotizador (/api/orden-web) los precios de
+//                                  Uniformeweb, que solo se usan para ordenar de menor a mayor precio.
+//   ORDEN_URL                      opcional; por defecto STOCK_URL cambiando /api/stock por /api/orden-web.
 
 const BASE = 'https://texora.cl';
 const PROXY = (process.env.TEXORA_PROXY || '').replace(/\/+$/, '');
 const PROXY_KEY = process.env.TEXORA_PROXY_KEY || '';
 const STOCK_URL = process.env.STOCK_URL || '';
 const STOCK_KEY = process.env.STOCK_KEY || '';
+const ORDEN_URL = process.env.ORDEN_URL || STOCK_URL.replace(/\/api\/stock\/?$/, '/api/orden-web');
 const STOCK = {}; // id -> color -> talla -> unidades (privado, va solo al cotizador)
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
@@ -325,10 +329,7 @@ async function main() {
   const ok = prods.filter((p) => !p._excluir && p.pagina && !EXCLUDE_NAME.test(p.nombre) && !EXCLUDE_IDS.has(p.id));
   for (const p of ok) delete p._excluir;
   // En todas las secciones los productos se muestran de menor a mayor precio (el sitio respeta este orden).
-  ok.sort((a, b) => a._precio - b._precio || a.id - b.id);
-  const sinPrecio = ok.filter((p) => p._precio === Infinity).length;
-  if (sinPrecio) console.log(sinPrecio + ' productos sin precio en Texora: van al final de su sección.');
-  for (const p of ok) delete p._precio;
+  ordenar(ok, await preciosWeb());
 
   if (prods.length < items.size * 0.85) throw new Error(`Solo se leyeron ${prods.length} de ${items.size} productos; no se actualiza el catálogo.`);
 
@@ -351,6 +352,50 @@ async function main() {
   for (const p of ok) porPagina[p.pagina] = (porPagina[p.pagina] || 0) + 1;
   console.log(`Listo: ${ok.length} productos.`, porPagina);
   await enviarStock(ok);
+}
+
+// --- Orden de menor a mayor precio ------------------------------------------------
+// Se ordena con el precio de Uniformeweb (el mismo que ven los vendedores en el modo cotizador:
+// lista del cotizador, tramo más chico). Los precios no se guardan en data/texora.js: solo el orden.
+// Reglas:
+//   1. Precio de Uniformeweb, de menor a mayor.
+//   2. Productos sin precio en la lista de Uniformeweb van al final, ordenados por el precio de Texora.
+//   3. Mismo precio: las versiones Hombre/Mujer de un modelo quedan juntas (Hombre y Unisex antes que Mujer).
+//   4. Si el cotizador no responde, se ordena por el precio de Texora (como antes) y se avisa en el registro.
+async function preciosWeb() {
+  if (!ORDEN_URL || !STOCK_KEY) { console.warn('::warning::Sin STOCK_URL/STOCK_KEY: se ordena por el precio de Texora.'); return null; }
+  try {
+    const r = await fetch(ORDEN_URL, { headers: { 'X-Clave': STOCK_KEY }, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    if (!d || !d.p || !Object.keys(d.p).length) throw new Error('lista vacía');
+    console.log('Precios de Uniformeweb para ordenar: ' + Object.keys(d.p).length + ' códigos.');
+    return d.p;
+  } catch (e) {
+    console.warn('::warning::No se pudieron leer los precios de Uniformeweb (' + e.message + '): se ordena por el precio de Texora.');
+    return null;
+  }
+}
+function clavePareja(n) {
+  return String(n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(hombre|mujer)\b/g, ' ').replace(/[^a-z0-9%]+/g, ' ').trim();
+}
+export function ordenar(lista, web) {
+  const precio = (p) => {
+    const v = web ? Number(web[String(p.sku || '').toUpperCase()]) : NaN;
+    return Number.isFinite(v) && v > 0 ? v : Infinity;
+  };
+  const tx = (p) => (Number.isFinite(p._precio) ? p._precio : Infinity);
+  const genero = (p) => (p.genero === 'Mujer' ? 1 : 0);
+  const pos = new Map(lista.map((p, i) => [p, i]));
+  const sinWeb = web ? lista.filter((p) => precio(p) === Infinity) : [];
+  lista.sort((a, b) =>
+    precio(a) - precio(b) || tx(a) - tx(b) ||
+    clavePareja(a.nombre).localeCompare(clavePareja(b.nombre)) || genero(a) - genero(b) ||
+    pos.get(a) - pos.get(b));
+  if (sinWeb.length) console.log(sinWeb.length + ' productos sin precio de Uniformeweb (van al final): ' + sinWeb.map((p) => p.sku).join(', '));
+  for (const p of lista) delete p._precio;
+  return lista;
 }
 
 // Unidades exactas al cotizador privado (no al sitio público). Si falla, el catálogo igual se actualiza.
@@ -385,7 +430,20 @@ async function soloFotos() {
   console.log('Fotos reordenadas (frente primero).');
 }
 
+// Con --solo-orden no se conecta a Texora: reordena el catálogo ya guardado con los precios
+// de Uniformeweb (sirve para aplicar al tiro un cambio de precios sin esperar la sincronización diaria).
+async function soloOrden() {
+  const fs = await import('node:fs');
+  const path = new URL('../data/texora.js', import.meta.url);
+  const data = JSON.parse(fs.readFileSync(path, 'utf8').replace(/^window\.TEXORA=/, '').replace(/;\s*$/, ''));
+  const web = await preciosWeb();
+  if (!web) throw new Error('Sin precios de Uniformeweb no se reordena.');
+  ordenar(data.productos, web);
+  fs.writeFileSync(path, 'window.TEXORA=' + JSON.stringify(data) + ';\n');
+  console.log('Catálogo reordenado de menor a mayor precio.');
+}
+
 const esPrincipal = process.argv[1] && import.meta.url === (await import('node:url')).pathToFileURL(process.argv[1]).href;
 if (esPrincipal) {
-  (process.argv.includes('--solo-fotos') ? soloFotos() : main()).catch((e) => { console.error(e.message); process.exit(1); });
+  (process.argv.includes('--solo-fotos') ? soloFotos() : process.argv.includes('--solo-orden') ? soloOrden() : main()).catch((e) => { console.error(e.message); process.exit(1); });
 }

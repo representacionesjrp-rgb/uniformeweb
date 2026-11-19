@@ -11,9 +11,11 @@
      camiseta / remera = polera; "cuello redondo" o "t-shirt" = polera sin cuello.
    - Código de producto (por ejemplo 01014): con Enter va directo a la ficha.
      El código exacto aparece primero.
-   - Orden: código exacto, disponibles antes que agotados, hombre/unisex primero
-     (mujer primero si se escribe mujer, dama, femenino…), y después los que calzan
-     en el nombre.
+   - Orden de las sugerencias mientras se escribe: código exacto, disponibles antes que
+     agotados, hombre/unisex primero (mujer primero si se escribe mujer, dama, femenino…),
+     y después los que calzan en el nombre.
+   - Página de resultados (buscar.html): igual que el resto del sitio, del producto más
+     económico al más costoso (el orden de data/texora.js); el código exacto va primero.
    - Sugerencias mientras se escribe (desde 2 letras, máximo 7) y "Ver todos los
      resultados". En la página de resultados, si hay varias palabras, se ofrece
      "Ver productos con cualquiera de las palabras".
@@ -119,7 +121,7 @@
     if (/\d/.test(c) && c.length > 2 && p._sku.indexOf(c) === 0) return 1;
     return 0;
   }
-  function buscar(raw, cualquiera) {
+  function buscar(raw, cualquiera, porPrecio) {
     var todos = catalogo || [];
     var tag = cuello(raw), genero = "", ws = [];
     // "hi-vis" se busca como "hi vis" (t-shirt queda entero para la regla del cuello).
@@ -149,6 +151,8 @@
     var quiereMujer = genero === "Mujer";
     function rangoGenero(p) { return p.genero === "Unisex" || !p.genero ? 1 : (p.genero === "Mujer") === quiereMujer ? 0 : 2; }
     res.sort(function (a, b) {
+      // Resultados completos: de menor a mayor precio (data/texora.js ya viene en ese orden).
+      if (porPrecio) return (b === exacto) - (a === exacto) || a._i - b._i;
       return (b === exacto) - (a === exacto) ||
         (a.disp === "A") - (b.disp === "A") ||
         (b._n || 0) - (a._n || 0) ||
@@ -304,7 +308,7 @@
     document.title = "Resultados de “" + raw + "” | Uniformeweb";
     tit.innerHTML = '<span class="t-azul">Resultados de</span> <span class="t-morado">“' + esc(raw) + "”</span>";
     cargar().then(function () {
-      var r = buscar(raw, cualquiera), cats = categorias(raw), n = r.productos.length;
+      var r = buscar(raw, cualquiera, true), cats = categorias(raw), n = r.productos.length;
       sub.innerHTML = (n ? n + (n === 1 ? " modelo" : " modelos") : "Ningún modelo") + (cualquiera ? " con cualquiera de las palabras" : "") + "." +
         (!cualquiera && palabras(raw).length > 1 ? ' <a href="' + urlResultados(raw, true) + '">Ver productos con cualquiera de las palabras →</a>' : "") +
         (cualquiera ? ' <a href="' + urlResultados(raw) + '">Ver solo los que tienen todas las palabras →</a>' : "");
