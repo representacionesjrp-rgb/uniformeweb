@@ -64,6 +64,7 @@
       .then(function (d) {
         precios = d && d.p && d.tramos && d.logo ? d : false;
         estadoFranja();
+        stockFicha();
         pintar(); preciosTarjetas(); preciosFicha();
       })
       .catch(function () { precios = false; estadoFranja(); pintar(); preciosFicha(); });
@@ -437,7 +438,8 @@
     n = document.createElement("small");
     n.className = "uwc-stock-nota";
     if (con) n.textContent = "Unidades exactas" + (stockFecha ? " al " + new Date(stockFecha).toLocaleDateString("es-CL") : "") + " (solo vendedores).";
-    else if (stock === false && UW.cotizadorUrl) n.innerHTML = enlaceSesion("para ver las unidades exactas por talla.");
+    else if (stock === false && precios) n.textContent = "Las unidades exactas aparecerán cuando se active la sincronización diaria con Texora.";
+    else if (stock === false && precios === false && UW.cotizadorUrl) n.innerHTML = enlaceSesion("para ver precios y unidades exactas.");
     else return;
     t.appendChild(n);
   }
