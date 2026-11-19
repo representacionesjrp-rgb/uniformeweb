@@ -113,6 +113,10 @@ en Mi cotización, el precio c/u de cada línea (incluye logo) y el resumen con 
 y "Te faltan $X netos para el siguiente tramo". El tramo se calcula con el total neto de toda la cotización (mismo cálculo que laropa.cl).
 El total estimado también va en Copiar resumen. Los clientes no ven precios; sin sesión, el vendedor ve el enlace para iniciarla.
 
+**Productos que no están en la web (solo vendedores con sesión):** Mi cotización tiene el buscador "Agregar cualquier producto de la lista
+de precios", que lee `/api/catalogo-web` del cotizador: todos los productos con precio de la lista de La Ropa y de la lista Romans. Los que
+están publicados en la web se agregan con su foto; los demás quedan como línea "lista de precios" y llegan igual al cotizador con "Abrir en el cotizador".
+
 Archivos: `assets/js/cotizador.js` y el bloque "Modo cotizador" al final de `assets/css/estilos.css`.
 
 ### Filtro por tipo (Cargo, Jeans, Térmico…)
