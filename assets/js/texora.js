@@ -20,6 +20,12 @@
     });
   }
   function foto(p, id, tam) { return IMG + id + "-" + (tam || "home_default") + "/" + p.slug + ".jpg"; }
+  // Fotos de las tarjetas: el navegador elige el tamaño según el ancho de la tarjeta y la
+  // densidad de la pantalla, para que no se vean borrosas (home_default mide solo 280 px).
+  var TAM_TARJETA = "(max-width: 860px) 50vw, (max-width: 1200px) 33vw, 420px";
+  function fotoSet(p, id) {
+    return foto(p, id, "medium_default") + " 370w, " + foto(p, id, "large_default") + " 700w";
+  }
   function waLink(texto) { return "https://wa.me/" + UW.whatsapp + "?text=" + encodeURIComponent(texto); }
   function fecha(iso) {
     var d = new Date(iso);
@@ -79,7 +85,7 @@
     var mas = cols.length > max ? '<span class="tx-mas-colores">+' + (cols.length - max) + "</span>" : "";
     return '<article class="tx-card" data-id="' + p.id + '" data-color="' + c0 + '">' +
       '<button type="button" class="tx-card-img tx-ver" aria-label="Ver ficha de ' + esc(p.nombre) + '">' +
-        '<img class="tx-img1" loading="lazy" src="' + foto(p, f0[0]) + '" alt="' + esc(p.nombre) + '">' +
+        '<img class="tx-img1" loading="lazy" src="' + foto(p, f0[0], "large_default") + '" srcset="' + fotoSet(p, f0[0]) + '" sizes="' + TAM_TARJETA + '" alt="' + esc(p.nombre) + '">' +
         '<span class="tx-estado tx-' + r.clase + '">' + esc(r.texto) + "</span>" +
         (p.genero ? '<span class="tx-genero">' + esc(p.genero) + "</span>" : "") +
       "</button>" +
@@ -94,11 +100,13 @@
   function colorTarjeta(card, p, i) {
     card.setAttribute("data-color", i);
     card.querySelectorAll(".tx-punto").forEach(function (b) { b.setAttribute("aria-pressed", +b.getAttribute("data-c") === i); });
-    var im = card.querySelector(".tx-img1"), src = foto(p, fotoColor(p, i));
+    var id = fotoColor(p, i), im = card.querySelector(".tx-img1"), src = foto(p, id, "large_default"), set = fotoSet(p, id);
     if (im.getAttribute("src") !== src) {
       im.classList.add("tx-cambiando");
       var pre = new Image();
-      pre.onload = pre.onerror = function () { im.src = src; im.classList.remove("tx-cambiando"); };
+      pre.sizes = TAM_TARJETA;
+      pre.onload = pre.onerror = function () { im.srcset = set; im.src = src; im.classList.remove("tx-cambiando"); };
+      pre.srcset = set;
       pre.src = src;
     }
     var t = card.querySelector(".tx-color-actual");
