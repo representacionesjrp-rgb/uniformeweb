@@ -74,6 +74,25 @@ export function referenciales(id, colores, cimg) {
   return r.length ? r.sort((a, b) => a - b) : undefined;
 }
 
+// Foto principal = la cara visible (frente) del producto, nunca la espalda.
+// Texora a veces pone primero la espalda o un acercamiento. Estas fotos (id de imagen de
+// Texora, revisadas a mano) se mueven al final de la lista de cada color: primero el frente
+// completo, después los acercamientos y al último las espaldas.
+// Si aparece un producto nuevo con la espalda primero, basta agregar el id de esa foto aquí.
+const ESPALDA = new Set([
+  3492, 6454, 6458, 6740, 7729, 7789,                   // chaquetas, micropolar hi-vis, chaleco
+  6793, 6802, 6803, 6812, 6817, 6826, 4850, 6421,       // polerones y otros
+]);
+const DETALLE = new Set([
+  6794, 6795, 6796, 6798, 6799, 6800, 6805, 6806, 6807, // acercamientos de polerones
+  6808, 6809, 6810, 6813, 6814, 6815, 6823, 6824,
+]);
+export function frentePrimero(ids) {
+  if (!ids || !ids.length) return ids;
+  const peso = (id) => (ESPALDA.has(id) ? 2 : DETALLE.has(id) ? 1 : 0);
+  return ids.map((id, i) => [id, i]).sort((a, b) => peso(a[0]) - peso(b[0]) || a[1] - b[1]).map((x) => x[0]);
+}
+
 const UMBRAL_TALLA = 20, UMBRAL_TOTAL = 50;
 function nivel(v, umbral) {
   if (typeof v === 'string' && v[0] === 'P') return 'P ' + v.slice(1);
@@ -200,7 +219,7 @@ async function product(item) {
   if (feats['Tela']) spec['Tela'] = feats['Tela'].join(', ');
   if (feats['Tipo de manga']) spec['Manga'] = feats['Tipo de manga'].join(', ');
   const genero = (feats['Género'] || [])[0] || (/mujer/i.test(p.name) ? 'Mujer' : /hombre/i.test(p.name) ? 'Hombre' : /unisex/i.test(p.name) ? 'Unisex' : '');
-  const imgs = (p.images || []).slice(0, 6).map((im) => +(String((im.bySize && im.bySize.large_default && im.bySize.large_default.url) || im.large?.url || '').match(/texora\.cl\/(\d+)-/) || [])[1]).filter(Boolean);
+  const imgs = frentePrimero((p.images || []).slice(0, 6).map((im) => +(String((im.bySize && im.bySize.large_default && im.bySize.large_default.url) || im.large?.url || '').match(/texora\.cl\/(\d+)-/) || [])[1]).filter(Boolean));
   // Guía de tallas (imagen del modal "TABLA DE TALLAS") y ficha técnica en PDF.
   const guia = absUrl((html.match(/<img[^>]+src="([^"]*\/img\/custom\/[^"]*)"[^>]*alt="Gu[ií]a de tallas"/i) || html.match(/<img[^>]+src="([^"]*Tabla[^"]*medidas[^"]*)"/i) || [])[1]);
   const ficha = absUrl((html.match(/href="([^"]*\/img\/custom\/fichas\/[^"]+\.pdf)"/i) || [])[1]);
@@ -218,7 +237,7 @@ async function product(item) {
         det[colorName(t)] = sizeTable(j.product_variants || '', raw);
         if (Object.keys(raw).length) (STOCK[item.id] = STOCK[item.id] || {})[colorName(t)] = raw;
       }
-      cimg.push([...new Set([...(j.product_cover_thumbnails || '').matchAll(/(\d+)-large_default/g)].map((x) => +x[1]))].slice(0, 6));
+      cimg.push(frentePrimero([...new Set([...(j.product_cover_thumbnails || '').matchAll(/(\d+)-large_default/g)].map((x) => +x[1]))].slice(0, 6)));
       await sleep(150);
     }
     if (vals.length < 2 || cimg.every((x) => x.join() === cimg[0].join())) cimg = undefined;
@@ -347,4 +366,23 @@ async function enviarStock(ok) {
   } catch (e) { console.warn('No se pudo enviar el stock al cotizador:', e.message); }
 }
 
-main().catch((e) => { console.error(e.message); process.exit(1); });
+// Con --solo-fotos no se conecta a Texora: solo reordena las fotos del catálogo ya guardado
+// (sirve para aplicar al tiro cambios en ESPALDA o DETALLE sin esperar la sincronización diaria).
+async function soloFotos() {
+  const fs = await import('node:fs');
+  const path = new URL('../data/texora.js', import.meta.url);
+  const txt = fs.readFileSync(path, 'utf8');
+  const data = JSON.parse(txt.replace(/^window\.TEXORA=/, '').replace(/;\s*$/, ''));
+  for (const p of data.productos) {
+    p.img = frentePrimero(p.img);
+    if (p.cimg) p.cimg = p.cimg.map(frentePrimero);
+    if (p.colores) p.cref = referenciales(p.id, p.colores, p.cimg);
+  }
+  fs.writeFileSync(path, 'window.TEXORA=' + JSON.stringify(data) + ';\n');
+  console.log('Fotos reordenadas (frente primero).');
+}
+
+const esPrincipal = process.argv[1] && import.meta.url === (await import('node:url')).pathToFileURL(process.argv[1]).href;
+if (esPrincipal) {
+  (process.argv.includes('--solo-fotos') ? soloFotos() : main()).catch((e) => { console.error(e.message); process.exit(1); });
+}
