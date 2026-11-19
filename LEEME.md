@@ -115,3 +115,10 @@ y "Te faltan $X netos para el siguiente tramo". El tramo se calcula con el total
 El total estimado también va en Copiar resumen. Los clientes no ven precios; sin sesión, el vendedor ve el enlace para iniciarla.
 
 Archivos: `assets/js/cotizador.js` y el bloque "Modo cotizador" al final de `assets/css/estilos.css`.
+
+### Filtro por tipo (Cargo, Jeans, Térmico…)
+
+Debajo del filtro Todos/Hombre/Mujer, cada página muestra los tipos de producto como en texora.cl (por ejemplo
+Pantalones: Cargo, Jeans, Ejecutivo, Outwork, Térmico…). Salen de las subcategorías que la sincronización lee de
+Texora, así que se mantienen solas. Qué tipos aparecen en cada página y en qué orden se define en la lista `TIPOS`
+al inicio de `pagina()` en `assets/js/texora.js`; un tipo sin modelos no se muestra.
