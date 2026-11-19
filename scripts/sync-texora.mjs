@@ -246,7 +246,18 @@ async function product(item) {
     detFecha: det ? new Date().toISOString().slice(0, 10) : undefined,
     guia,
     ficha,
+    // Precio de Texora: solo se usa para ordenar (de menor a mayor) y no se publica en el sitio.
+    _precio: precioDe(p),
   };
+}
+// Precio sin formato de la ficha de PrestaShop (price_amount); Infinity si no viene.
+function precioDe(p) {
+  for (const k of ['price_amount', 'price_tax_exc', 'regular_price_amount']) {
+    const n = Number(p && p[k]);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  const n = Number(String((p && p.price) || '').replace(/[^\d,]/g, '').replace(',', '.'));
+  return n > 0 ? n : Infinity;
 }
 
 async function main() {
@@ -291,7 +302,11 @@ async function main() {
   }
   const ok = prods.filter((p) => !p._excluir && p.pagina && !EXCLUDE_NAME.test(p.nombre) && !EXCLUDE_IDS.has(p.id));
   for (const p of ok) delete p._excluir;
-  ok.sort((a, b) => a.id - b.id);
+  // En todas las secciones los productos se muestran de menor a mayor precio (el sitio respeta este orden).
+  ok.sort((a, b) => a._precio - b._precio || a.id - b.id);
+  const sinPrecio = ok.filter((p) => p._precio === Infinity).length;
+  if (sinPrecio) console.log(sinPrecio + ' productos sin precio en Texora: van al final de su sección.');
+  for (const p of ok) delete p._precio;
 
   if (prods.length < items.size * 0.85) throw new Error(`Solo se leyeron ${prods.length} de ${items.size} productos; no se actualiza el catálogo.`);
 
