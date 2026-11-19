@@ -187,9 +187,11 @@
           tipos.map(function (t, i) { return '<button type="button" aria-pressed="false" data-t="' + (i + 1) + '">' + esc(t.nombre) + ' <span class="tx-tipo-n"></span></button>'; }).join("") + "</div>" : "") +
       "</div>" +
       '<p class="tx-vacio" hidden>No hay modelos de este tipo para la opción elegida. Prueba con «Todos».</p>' +
-      '<div class="tx-grid">' + lista.map(tarjeta).join("") + "</div>" +
-      (gal.querySelector(".galeria-titulo") || !gal.children.length ? "" : '<h2 class="galeria-titulo tx-otros">Más modelos</h2>');
+      '<div class="tx-grid">' + lista.map(tarjeta).join("") + "</div>";
     gal.parentNode.insertBefore(cont, gal);
+    // Las fotos antiguas de config.js ("Más modelos") ya no se muestran
+    // cuando la página tiene modelos de Texora.
+    gal.hidden = true;
     var porId = {};
     lista.forEach(function (p) { porId[p.id] = p; });
     cont.addEventListener("click", function (e) {

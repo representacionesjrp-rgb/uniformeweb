@@ -462,7 +462,8 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
 .tx-ultimas { color: #c25e00; }
 .tx-proximo { color: #2a4bc0; }
 .tx-agotado { color: #7b8492; }
-@media (max-width: 1200px) { .tx-grid { grid-template-columns: repeat(3, 1fr); } }
+/* 4 productos por fila en escritorio (también con zoom del navegador); 3 en tablets, 2 en celular */
+@media (max-width: 900px) { .tx-grid { grid-template-columns: repeat(3, 1fr); gap: 24px 18px; } }
 @media (max-width: 860px) { .tx-grid { grid-template-columns: repeat(2, 1fr); gap: 18px; } }
 @media (max-width: 520px) {
   .tx-card { border-radius: 16px; }
@@ -562,8 +563,8 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
 }
 .uwc-sin-scroll { overflow: hidden; }
 
-/* Botón flotante (a la izquierda, para no tapar WhatsApp) */
-.uwc-boton { position: fixed; left: 16px; bottom: 18px; z-index: 61; display: inline-flex; align-items: center; gap: .5em; padding: .75em 1.15em; border: 0; border-radius: 999px; background: var(--uwc-grad); color: #fff; font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 10px 28px color-mix(in srgb, var(--uwc-1) 40%, transparent); transition: transform .2s, box-shadow .2s; }
+/* Botón "Mi cotización" fijo arriba a la derecha, como el carrito de un ecommerce */
+.uwc-boton { position: fixed; right: 18px; top: 16px; z-index: 61; display: inline-flex; align-items: center; gap: .5em; padding: .75em 1.15em; border: 0; border-radius: 999px; background: var(--uwc-grad); color: #fff; font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 10px 28px color-mix(in srgb, var(--uwc-1) 40%, transparent); transition: transform .2s, box-shadow .2s; }
 .uwc-boton:hover { transform: translateY(-2px); }
 .uwc-boton svg { width: 1.35em; height: 1.35em; }
 .uwc-boton .uwc-n { min-width: 1.6em; height: 1.6em; padding: 0 .4em; border-radius: 999px; background: #fff; color: var(--uwc-2); display: inline-grid; place-items: center; font-size: .85em; }
@@ -572,6 +573,11 @@ body[data-categoria] .seccion > .contenedor { max-width: 1680px; }
 .uwc-boton.pulso { animation: uwc-pulso .6s ease; }
 @keyframes uwc-pulso { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
 @media (max-width: 560px) { .uwc-boton { padding: .8em; } .uwc-boton-txt { display: none; } }
+html.uwc-vendedor .uwc-boton { top: 46px; }
+.uwc-boton { box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 10px 28px color-mix(in srgb, var(--uwc-1) 40%, transparent); }
+/* Celular/tablet: queda a la izquierda del botón del menu (☰) para no taparlo */
+@media (max-width: 1020px) { .uwc-boton { right: 60px; top: 14px; font-size: .9rem; } html.uwc-vendedor .uwc-boton { top: 44px; } }
+@media (max-width: 560px) { .uwc-boton { right: 56px; top: 16px; padding: .65em; } html.uwc-vendedor .uwc-boton { top: 46px; } }
 
 /* Chip "+ Cotizar" sobre la foto de cada tarjeta */
 .tx-card, .tx-card-img { position: relative; }
