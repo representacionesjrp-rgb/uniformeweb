@@ -26,6 +26,33 @@
   function fotoSet(p, id) {
     return foto(p, id, "medium_default") + " 370w, " + foto(p, id, "large_default") + " 700w";
   }
+  // Color de las bolitas. Texora no entrega código de color para los bicolores ni para
+  // algunos colores (usa una imagen de textura), así que se deduce del nombre:
+  // "Naranjo/gris Oscuro" se pinta mitad naranjo y mitad gris oscuro.
+  var PALETA = {
+    "amarillo": "#fffa08", "naranjo": "#f39c11", "rojo": "#e12f31", "rojo minero": "#b30007",
+    "burdeo": "#7e1733", "azul": "#032089", "azul marino": "#032089", "azul noche": "#001436",
+    "azul piedra": "#002f5f", "azul stone": "#3b5a7a", "stone": "#3b5a7a", "azul royal": "#1f4fd1",
+    "royal": "#1f4fd1", "azulino": "#0b38db", "azul indigo": "#2e3f7f", "azul claro": "#7fb3e6",
+    "celeste": "#84ddff", "celeste claro": "#b2eaff", "celeste oscuro": "#84ddff",
+    "negro": "#000000", "blanco": "#ffffff", "gris": "#b0afb5", "gris claro": "#d4d4d8",
+    "gris oscuro": "#333333", "gris azulado": "#3f3f4a", "beige": "#ffefb8", "khaki": "#c5ac8d",
+    "taupe": "#8b7d6b", "brown": "#8b4513", "marron": "#8b4513", "marron claro": "#aa8168",
+    "verde": "#2e7d32", "verde musgo": "#313c27", "verde pino": "#2b5700", "army": "#4b5320", "moss": "#5b6236"
+  };
+  function tonoNombre(n) {
+    n = String(n || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim()
+      .replace(/\boscu?r?o?\b\.?/g, "oscuro").replace(/\bcl\b\.?/g, "claro");
+    return PALETA[n] || PALETA[n.split(" ")[0]] || "";
+  }
+  function fondoColor(c) {
+    var partes = String(c[0] || "").split("/").map(tonoNombre);
+    if (partes.length > 1 && partes.every(Boolean)) {
+      var paso = 100 / partes.length;
+      return "linear-gradient(135deg," + partes.map(function (h, k) { return h + " " + Math.round(k * paso) + "% " + Math.round((k + 1) * paso) + "%"; }).join(",") + ")";
+    }
+    return c[1] || partes[0] || "#ccc";
+  }
   function waLink(texto) { return "https://wa.me/" + UW.whatsapp + "?text=" + encodeURIComponent(texto); }
   function fecha(iso) {
     var d = new Date(iso);
@@ -80,7 +107,7 @@
     var r = resumen(p), cols = p.colores || [], max = 7, c0 = colorInicial(p), f0 = fotosColor(p, c0);
     var puntos = cols.slice(0, max).map(function (c, i) {
       return '<button type="button" class="tx-punto" data-c="' + i + '" aria-pressed="' + (i === c0) + '" aria-label="Ver en ' + esc(c[0]) + '" title="' + esc(c[0]) + '">' +
-        '<i style="background:' + esc(c[1] || "#ccc") + '"></i></button>';
+        '<i style="background:' + esc(fondoColor(c)) + '"></i></button>';
     }).join("");
     var mas = cols.length > max ? '<span class="tx-mas-colores">+' + (cols.length - max) + "</span>" : "";
     return '<article class="tx-card" data-id="' + p.id + '" data-color="' + c0 + '">' +
@@ -205,7 +232,7 @@
         "<h2>" + esc(p.nombre) + "</h2>" +
         (p.desc ? '<p class="tx-desc">' + esc(p.desc) + "</p>" : "") +
         ((p.colores || []).length ? '<h3>Color: <span class="tx-color-nombre"></span></h3><div class="tx-colores">' +
-          p.colores.map(function (c, i) { return '<button type="button" data-color="' + i + '" title="' + esc(c[0]) + '" aria-label="' + esc(c[0]) + '"><i style="background:' + esc(c[1] || "#ccc") + '"></i></button>'; }).join("") + "</div>" +
+          p.colores.map(function (c, i) { return '<button type="button" data-color="' + i + '" title="' + esc(c[0]) + '" aria-label="' + esc(c[0]) + '"><i style="background:' + esc(fondoColor(c)) + '"></i></button>'; }).join("") + "</div>" +
           '<p class="tx-nota-foto" hidden>Foto referencial: este color todavía no tiene foto propia, te mostramos el modelo en otro color.</p>' : "") +
         '<div class="tx-tallas"></div>' +
         '<div class="tx-enlaces">' +
