@@ -20,7 +20,7 @@ window.UW = {
      Dirección del cotizador interno de ventas (sin / al final). Con ella, los
      vendedores (sitio abierto con ?vendedor=1) ven "Abrir en el cotizador",
      que manda los productos como /cotizaciones?p=código|cantidad|detalle.
-     Vacío = solo "Copiar resumen". */
+     Vacío = los vendedores ven los botones normales (formulario y WhatsApp). */
   cotizadorUrl: "https://ventas.uniformeweb.cl",
 
   mensajeWhatsapp: "Hola Uniformeweb, quiero cotizar ropa corporativa con logo.",
