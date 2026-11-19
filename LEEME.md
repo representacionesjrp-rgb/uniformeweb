@@ -96,6 +96,9 @@ Cada visitante arma su propia cotización mientras navega, sin crear cuenta:
   (al agregar un producto solo se pregunta cuántas unidades; no se pide color ni talla), se marca **Con logo** y se agregan comentarios. La lista se guarda en el navegador y sigue al cambiar de página.
 - **Enviar solicitud de cotización** llena el formulario del pie con el detalle; también se puede enviar por WhatsApp.
   Al llegar a `gracias.html` la lista se vacía.
+- Al agregar aparece el aviso **Agregado a tu cotización** (unidades, total de unidades y "N de 10 productos") con
+  **Ver mi cotización** y **Seguir cotizando**; se cierra solo a los 12 segundos o con Escape.
+- Igual que en laropa.cl, cada solicitud admite **máximo 10 productos distintos**: al llegar a 10 se avisa, y un producto 11 no se agrega.
 
 **Vendedores:** abran el sitio una vez con `?vendedor=1` (por ejemplo `https://www.uniformeweb.cl/?vendedor=1`) y queda activo en ese navegador
 (`?vendedor=0` o el botón "Salir" lo apaga). Cada producto de la lista muestra su **stock por talla** del color elegido
@@ -103,5 +106,12 @@ Cada visitante arma su propia cotización mientras navega, sin crear cuenta:
 (ventas.uniformeweb.cl), ve las **unidades exactas** por talla: el sincronizador las envía al cotizador privado
 (secretos `STOCK_URL` y `STOCK_KEY` en GitHub, `STOCK_SYNC_KEY` en Railway) y nunca quedan en el sitio público. Suma **Copiar resumen** y, si `cotizadorUrl` está configurado en `config.js`,
 **Abrir en el cotizador** (ventas.uniformeweb.cl), que manda los productos como `/cotizaciones?p=código|cantidad|detalle` (mismo formato que laropa.cl).
+
+**Precios (solo vendedores con sesión en el cotizador):** el sitio pide `/api/precios-web` al cotizador (los mismos precios por tramo
+del cotizador, laropa.cl + 1%). Con eso, como el modo cotizador de laropa.cl, se ve: "$X + IVA desde $Y por volumen" en cada tarjeta;
+en la ficha, el precio unitario según la cotización actual, cuánto falta para bajar de tramo y la tabla de tramos con el bordado del logo 8x3 cm;
+en Mi cotización, el precio c/u de cada línea (incluye logo) y el resumen con Tramo, Logo bordado, Total neto, IVA 19%, Total estimado
+y "Te faltan $X netos para el siguiente tramo". El tramo se calcula con el total neto de toda la cotización (mismo cálculo que laropa.cl).
+El total estimado también va en Copiar resumen. Los clientes no ven precios; sin sesión, el vendedor ve el enlace para iniciarla.
 
 Archivos: `assets/js/cotizador.js` y el bloque "Modo cotizador" al final de `assets/css/estilos.css`.
