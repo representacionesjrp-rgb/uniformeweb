@@ -11,6 +11,9 @@
      talla y los precios por tramo (los entrega el cotizador privado, nunca el sitio público).
      Con esa sesión, Mi cotización también tiene un buscador para agregar cualquier
      producto de la lista de precios (La Ropa y Romans), aunque no esté publicado en la web.
+     En modo vendedor, Mi cotización se abre a pantalla completa en la misma ventana
+     (como la página "Mi cotización" de laropa.cl): productos a la izquierda y resumen
+     con tramo, neto, IVA y total a la derecha. El botón Atrás del navegador la cierra.
    La lista se guarda en el navegador, así que sigue igual al cambiar de página.
    Normalmente no necesita editar este archivo.
    ========================================================================= */
@@ -436,12 +439,24 @@
     document.body.appendChild(boton);
 
     panel = document.createElement("div");
-    panel.className = "uwc-capa";
-    panel.innerHTML =
+    panel.className = "uwc-capa" + (vendedor ? " uwc-pagina" : "");
+    panel.innerHTML = vendedor ?
+      // Modo vendedor: página completa en la misma ventana, como "Mi cotización" de laropa.cl.
+      '<div class="uwc-panel" role="dialog" aria-modal="true" aria-labelledby="uwc-titulo" tabindex="-1">' +
+        '<header class="uwc-cab"><div class="uwc-pag-ancho">' +
+          '<button type="button" class="uwc-volver uwc-x-pag">← Seguir cotizando</button>' +
+          '<div class="uwc-cab-tit"><div><h1 id="uwc-titulo">Mi <span>cotización</span></h1>' +
+          "<p>Arma la cotización mezclando productos. El tramo de precio se calcula con el total neto de toda la cotización.</p></div></div>" +
+        "</div></header>" +
+        '<div class="uwc-pag-ancho uwc-pag">' +
+          '<section class="uwc-cuerpo" aria-label="Productos"></section>' +
+          '<aside class="uwc-pie" aria-label="Resumen"></aside>' +
+        "</div>" +
+      "</div>" :
       '<aside class="uwc-panel" role="dialog" aria-modal="true" aria-labelledby="uwc-titulo" tabindex="-1">' +
         '<header class="uwc-cab">' +
           '<div><h2 id="uwc-titulo">Mi cotización</h2>' +
-          (vendedor ? '<span class="uwc-modo">Modo vendedor <button type="button" class="uwc-salir">Salir</button></span>' : '<p>Cotiza sin crear cuenta: indica cuántas unidades y si lleva tu logo. Te respondemos en máximo 24 horas.</p>') +
+          '<p>Cotiza sin crear cuenta: indica cuántas unidades y si lleva tu logo. Te respondemos en máximo 24 horas.</p>' +
           "</div>" +
           '<button type="button" class="uwc-x" aria-label="Cerrar">×</button>' +
         "</header>" +
@@ -454,7 +469,7 @@
 
     panel.addEventListener("click", function (e) {
       var t = e.target;
-      if (t === panel || t.closest(".uwc-x")) return cerrar();
+      if (t === panel || t.closest(".uwc-x, .uwc-x-pag")) return cerrar();
       if (t.closest(".uwc-salir")) { guardar(CLAVE_V, "0"); location.href = location.pathname; return; }
       var linea = t.closest("[data-clave]"), it = linea && buscar(linea.getAttribute("data-clave"));
       if (t.closest(".uwc-quitar") && it) { lista.splice(lista.indexOf(it), 1); persistir(); pintar(); return; }
@@ -568,25 +583,40 @@
     boton.classList.toggle("con-items", n > 0);
     if (!n) {
       cuerpo.innerHTML = buscadorHTML() + '<div class="uwc-vacio"><p><b>Tu cotización está vacía.</b></p>' +
-        "<p>Toca <em>+ Cotizar</em> en cualquier modelo, o abre su ficha y presiona <em>Agregar a mi cotización</em>.</p></div>";
+        "<p>Toca <em>+ Cotizar</em> en cualquier modelo, o abre su ficha y presiona <em>Agregar a mi cotización</em>.</p>" +
+        (vendedor ? '<button type="button" class="btn btn-acento uwc-x-pag">Ver catálogo</button>' : "") + "</div>";
       pieP.innerHTML = "";
       return;
     }
     var obs = leer(CLAVE + "-obs") || "";
-    cuerpo.innerHTML = '<ul class="uwc-lista">' + lista.map(lineaHTML).join("") + "</ul>" + buscadorHTML() +
-      '<label class="uwc-campo uwc-obs-c">Comentarios (opcional)<textarea class="uwc-obs" rows="2" placeholder="Ej.: logo en el pecho izquierdo, entrega antes del 15">' + esc(obs) + "</textarea></label>" +
-      (vendedor ? '<div class="uwc-est"></div>' : "");
+    var obsHTML = '<label class="uwc-campo uwc-obs-c">Comentarios (opcional)<textarea class="uwc-obs" rows="2" placeholder="Ej.: logo en el pecho izquierdo, entrega antes del 15">' + esc(obs) + "</textarea></label>";
+    if (vendedor) {
+      // Página completa: productos a la izquierda; resumen, comentarios y acciones a la derecha.
+      cuerpo.innerHTML = '<div class="uwc-lista-cab"><h2>Productos <small>' + n + " de " + MAX + "</small></h2>" +
+        '<button type="button" class="uwc-link uwc-vaciar">Vaciar cotización</button></div>' +
+        '<ul class="uwc-lista">' + lista.map(lineaHTML).join("") + "</ul>" + buscadorHTML();
+      pieP.innerHTML = '<h2>Resumen</h2><div class="uwc-resumen"></div><div class="uwc-est"></div>' + obsHTML +
+        '<div class="uwc-acciones">' +
+          (UW.cotizadorUrl ? '<a class="btn btn-acento uwc-cotizador" target="_blank" rel="noopener">Abrir en el cotizador</a>' : "") +
+          '<button type="button" class="btn btn-borde uwc-x-pag">Seguir cotizando</button>' +
+        "</div>";
+      resumen();
+      enfocar(foco);
+      return;
+    }
+    cuerpo.innerHTML = '<ul class="uwc-lista">' + lista.map(lineaHTML).join("") + "</ul>" + buscadorHTML() + obsHTML;
     pieP.innerHTML =
       '<div class="uwc-resumen"></div>' +
       '<div class="uwc-acciones">' +
-        // Modo vendedor: solo "Abrir en el cotizador" (sin enviar solicitud, WhatsApp ni copiar resumen).
-        (vendedor && UW.cotizadorUrl ?
-          '<a class="btn btn-acento uwc-cotizador" target="_blank" rel="noopener">Abrir en el cotizador</a>' :
-          '<button type="button" class="btn btn-acento uwc-enviar">Enviar solicitud de cotización</button>' +
-          '<a class="btn btn-wa uwc-wa" target="_blank" rel="noopener">' + (UW.iconWA || "") + " Enviar por WhatsApp</a>") +
+        // (El modo vendedor usa la página completa de arriba, solo con "Abrir en el cotizador".)
+        '<button type="button" class="btn btn-acento uwc-enviar">Enviar solicitud de cotización</button>' +
+        '<a class="btn btn-wa uwc-wa" target="_blank" rel="noopener">' + (UW.iconWA || "") + " Enviar por WhatsApp</a>" +
         '<button type="button" class="uwc-link uwc-vaciar">Vaciar cotización</button>' +
       "</div>";
     resumen();
+    enfocar(foco);
+  }
+  function enfocar(foco) {
     if (foco) {
       var li = cuerpo.querySelector('[data-clave="' + foco.replace(/"/g, '\\"') + '"]');
       if (li) {
@@ -612,7 +642,7 @@
   }
   // Solo vendedores con precios: precio por línea y total estimado con IVA.
   function estimado() {
-    var e = cuerpo && cuerpo.querySelector(".uwc-est");
+    var e = panel && panel.querySelector(".uwc-est");
     if (!e) return;
     if (!precios) {
       e.innerHTML = vendedor && precios === false && UW.cotizadorUrl ? "<small>" + enlaceSesion("para ver precios y el total estimado.") + "</small>" : "";
@@ -682,22 +712,43 @@
   }
 
   /* --- Abrir / cerrar -------------------------------------------------------- */
-  var antes = null;
+  var antes = null, HASH = "#mi-cotizacion", empujado = false;
   function abrir(foco) {
     // Si la ficha de Texora está abierta, se cierra para no tener dos ventanas encima.
     var ficha = document.querySelector(".tx-ficha.abierto .tx-cerrar");
     if (ficha) ficha.click();
-    antes = document.activeElement;
+    var yaAbierto = panel.classList.contains("abierto");
+    if (!yaAbierto) antes = document.activeElement;
     pintar(foco);
     panel.classList.add("abierto");
     document.documentElement.classList.add("uwc-sin-scroll");
-    if (!foco) panel.querySelector(".uwc-panel").focus();
+    if (vendedor && !yaAbierto) {
+      // Página completa: queda en el historial para que "Atrás" vuelva al catálogo.
+      var pag = panel.querySelector(".uwc-panel");
+      pag.scrollTop = 0;
+      if (location.hash !== HASH && history.pushState) {
+        try { history.pushState({ uwc: 1 }, "", location.pathname + location.search + HASH); empujado = true; } catch (e) {}
+      }
+    }
+    if (!foco) panel.querySelector(".uwc-panel").focus({ preventScroll: true });
   }
-  function cerrar() {
+  function ocultar() {
     panel.classList.remove("abierto");
     document.documentElement.classList.remove("uwc-sin-scroll");
     if (antes && antes.focus) try { antes.focus({ preventScroll: true }); } catch (e) {}
   }
+  function cerrar() {
+    if (!panel.classList.contains("abierto")) return;
+    ocultar();
+    if (!vendedor) return;
+    if (empujado) { empujado = false; history.back(); }
+    else if (location.hash === HASH && history.replaceState) history.replaceState(null, "", location.pathname + location.search);
+  }
+  window.addEventListener("popstate", function () {
+    if (!panel || !vendedor) return;
+    if (location.hash === HASH) { if (!panel.classList.contains("abierto")) abrir(); }
+    else if (panel.classList.contains("abierto")) { empujado = false; ocultar(); }
+  });
   var tAviso;
   function aviso(msg) {
     toast.textContent = msg;
