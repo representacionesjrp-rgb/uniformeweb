@@ -9,6 +9,8 @@
      UW.cotizadorUrl está configurado en config.js) y "Copiar resumen". Si el
      vendedor inició sesión en el cotizador, la ficha muestra las unidades exactas por
      talla y los precios por tramo (los entrega el cotizador privado, nunca el sitio público).
+     Con esa sesión, Mi cotización también tiene un buscador para agregar cualquier
+     producto de la lista de precios (La Ropa y Romans), aunque no esté publicado en la web.
    La lista se guarda en el navegador, así que sigue igual al cambiar de página.
    Normalmente no necesita editar este archivo.
    ========================================================================= */
@@ -63,12 +65,80 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         precios = d && d.p && d.tramos && d.logo ? d : false;
+        if (precios) cargarCatalogo();
         estadoFranja();
         stockFicha();
         pintar(); preciosTarjetas(); preciosFicha();
       })
       .catch(function () { precios = false; estadoFranja(); pintar(); preciosFicha(); });
   }
+  /* --- Lista de precios completa (solo vendedores con sesión) ----------------- */
+  // Productos de la web y además los de la lista de precios (La Ropa y Romans)
+  // que no están publicados: el cotizador entrega { productos:[[sku, nombre, marca, lista]] }.
+  var catalogo = null, cargandoCat = false;
+  function cargarCatalogo(listo) {
+    if (catalogo || cargandoCat || !precios || !window.fetch) return;
+    cargandoCat = true;
+    fetch(baseCot() + "/api/catalogo-web", { credentials: "include", cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        cargandoCat = false;
+        catalogo = d && d.productos ? d.productos.map(function (r) {
+          return { sku: r[0], nombre: r[1], marca: r[2], lista: r[3], txt: plano(r[0] + " " + r[1] + " " + r[2]) };
+        }) : null;
+        if (listo) listo();
+      })
+      .catch(function () { cargandoCat = false; });
+  }
+  function plano(t) { return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+  function webPorSku(sku) {
+    var k = String(sku).toUpperCase(), ps = productos();
+    for (var i = 0; i < ps.length; i++) if (String(ps[i].sku || "").toUpperCase() === k) return ps[i];
+    return null;
+  }
+  function buscadorHTML() {
+    if (!vendedor || !precios) return "";
+    return '<div class="uwc-buscador"><label class="uwc-campo">Agregar cualquier producto de la lista de precios (web, La Ropa y Romans)' +
+      '<input class="uwc-buscar" type="search" autocomplete="off" placeholder="Código o nombre, ej.: 9501, jockey, parka"></label>' +
+      '<ul class="uwc-res" role="listbox"></ul></div>';
+  }
+  function buscarLista(q, caja) {
+    var ul = caja && caja.querySelector(".uwc-res");
+    if (!ul) return;
+    var t = plano(q).trim();
+    if (t.length < 2) { ul.innerHTML = ""; return; }
+    if (!catalogo) {
+      ul.innerHTML = "<li class=\"uwc-res-nota\">Cargando la lista de precios…</li>";
+      cargarCatalogo(function () { buscarLista(q, caja); });
+      return;
+    }
+    var terms = t.split(/\s+/), hits = [];
+    for (var i = 0; i < catalogo.length; i++) {
+      var c = catalogo[i], ok = true;
+      for (var j = 0; j < terms.length; j++) if (c.txt.indexOf(terms[j]) < 0) { ok = false; break; }
+      if (ok) hits.push(c);
+    }
+    hits.sort(function (a, b) {
+      var ea = plano(a.sku) === t ? 0 : 1, eb = plano(b.sku) === t ? 0 : 1;
+      return ea - eb || ((preciosDe(a.sku) || [0])[0] - (preciosDe(b.sku) || [0])[0]);
+    });
+    hits = hits.slice(0, 30);
+    ul.innerHTML = hits.length ? hits.map(function (c) {
+      var pr = preciosDe(c.sku), web = webPorSku(c.sku);
+      return '<li><button type="button" class="uwc-res-item" data-sku="' + esc(c.sku) + '"><b>' + esc(web ? web.nombre : c.nombre) + "</b>" +
+        "<small>Cód. " + esc(c.sku) + (c.marca ? " · " + esc(c.marca) : "") + " · " + (web ? "En la web" : "Lista " + esc(c.lista)) +
+        (pr ? " · " + clp(pr[0]) + " + IVA" : "") + "</small></button></li>";
+    }).join("") : "<li class=\"uwc-res-nota\">Sin coincidencias en la lista de precios.</li>";
+  }
+  function agregarSku(sku) {
+    var web = webPorSku(sku);
+    if (web) return agregar(web, null, true);
+    var c = null;
+    for (var i = 0; catalogo && i < catalogo.length; i++) if (catalogo[i].sku === sku) { c = catalogo[i]; break; }
+    if (!c) return;
+    agregar({ id: "L-" + c.sku, sku: c.sku, nombre: c.nombre, colores: [] }, null, true);
+  }
+
   function preciosDe(sku) { return precios && sku != null ? precios.p[String(sku).toUpperCase()] || null : null; }
   // Mismo cálculo que La Ropa: el tramo es el más alto cuyo mínimo alcanza el total
   // neto calculado con los precios de ese tramo (productos + logo bordado).
@@ -391,9 +461,12 @@
       if (t.closest(".uwc-vaciar")) { if (window.confirm("¿Vaciar tu cotización?")) { lista = []; persistir(); pintar(); } return; }
       if (t.closest(".uwc-enviar")) return alFormulario();
       if (t.closest(".uwc-copiar")) return copiar(t.closest(".uwc-copiar"));
+      var res = t.closest(".uwc-res-item");
+      if (res) return agregarSku(res.getAttribute("data-sku"));
     });
     panel.addEventListener("input", function (e) {
       var t = e.target, linea = t.closest("[data-clave]"), it = linea && buscar(linea.getAttribute("data-clave"));
+      if (t.classList.contains("uwc-buscar")) { buscarLista(t.value, t.closest(".uwc-buscador")); return; }
       if (t.classList.contains("uwc-obs")) { guardar(CLAVE + "-obs", t.value); actualizarEnlaces(); return; }
       if (!it) return;
       if (t.classList.contains("uwc-total-in")) it.cantidad = entero(t.value);
@@ -473,9 +546,10 @@
     var cant = '<label class="uwc-campo uwc-total">Cantidad total <input class="uwc-total-in" type="number" inputmode="numeric" min="0" step="1" value="' +
       (entero(it.cantidad) || "") + '" placeholder="0"></label>';
     return '<li class="uwc-linea" data-clave="' + esc(it.clave) + '">' +
-      '<a class="uwc-foto" href="' + esc(it.url || "#") + '">' + (it.foto ? '<img src="' + esc(it.foto) + '" alt="" loading="lazy">' : "") + "</a>" +
+      (it.url ? '<a class="uwc-foto" href="' + esc(it.url) + '">' : '<span class="uwc-foto">') + (it.foto ? '<img src="' + esc(it.foto) + '" alt="" loading="lazy">' : "") + (it.url ? "</a>" : "</span>") +
       '<div class="uwc-datos">' +
-        '<div class="uwc-nombre"><a href="' + esc(it.url || "#") + '">' + esc(it.nombre) + '</a><small>Cód. ' + esc(it.sku) + "</small></div>" +
+        '<div class="uwc-nombre">' + (it.url ? '<a href="' + esc(it.url) + '">' + esc(it.nombre) + "</a>" : "<span>" + esc(it.nombre) + "</span>") +
+          "<small>Cód. " + esc(it.sku) + (it.url ? "" : " · lista de precios") + "</small></div>" +
         cant +
         '<div class="uwc-fila">' +
           '<label class="uwc-check"><input type="checkbox" class="uwc-logo-in"' + (it.logo ? " checked" : "") + "> Con logo</label>" +
@@ -494,13 +568,13 @@
     badge.hidden = !n;
     boton.classList.toggle("con-items", n > 0);
     if (!n) {
-      cuerpo.innerHTML = '<div class="uwc-vacio"><p><b>Tu cotización está vacía.</b></p>' +
+      cuerpo.innerHTML = buscadorHTML() + '<div class="uwc-vacio"><p><b>Tu cotización está vacía.</b></p>' +
         "<p>Toca <em>+ Cotizar</em> en cualquier modelo, o abre su ficha y presiona <em>Agregar a mi cotización</em>.</p></div>";
       pieP.innerHTML = "";
       return;
     }
     var obs = leer(CLAVE + "-obs") || "";
-    cuerpo.innerHTML = '<ul class="uwc-lista">' + lista.map(lineaHTML).join("") + "</ul>" +
+    cuerpo.innerHTML = '<ul class="uwc-lista">' + lista.map(lineaHTML).join("") + "</ul>" + buscadorHTML() +
       '<label class="uwc-campo uwc-obs-c">Comentarios (opcional)<textarea class="uwc-obs" rows="2" placeholder="Ej.: logo en el pecho izquierdo, entrega antes del 15">' + esc(obs) + "</textarea></label>" +
       (vendedor ? '<div class="uwc-est"></div>' : "");
     pieP.innerHTML =
