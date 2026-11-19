@@ -242,6 +242,48 @@
     if (m && porId[m[1]]) abrir(porId[m[1]]);
   }
 
+  /* --- Versión hombre / mujer ------------------------------------------ */
+  // Los modelos que Texora tiene en versión hombre y mujer (mismo nombre, salvo la
+  // palabra "Hombre"/"Mujer") se enlazan para cambiar de versión dentro de la misma
+  // ficha, como en laropa.cl. Se arma solo con los datos; no hay que editar nada.
+  var parejas = null;
+  function clavePareja(p) {
+    return String(p.nombre || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/\b(hombre|mujer)\b/g, " ").replace(/[^a-z0-9%]+/g, " ").trim();
+  }
+  function pareja(p) {
+    if (!parejas) {
+      parejas = {};
+      var grupos = {};
+      ((DATA && DATA.productos) || []).forEach(function (q) {
+        if (q.genero !== "Hombre" && q.genero !== "Mujer") return;
+        var k = clavePareja(q);
+        (grupos[k] = grupos[k] || []).push(q);
+      });
+      Object.keys(grupos).forEach(function (k) {
+        var g = grupos[k];
+        // Solo pares claros: exactamente un modelo de hombre y uno de mujer.
+        if (g.length === 2 && g[0].genero !== g[1].genero) { parejas[g[0].id] = g[1]; parejas[g[1].id] = g[0]; }
+      });
+    }
+    return parejas[p.id] || null;
+  }
+  // Al cambiar de versión se mantiene el color elegido si la otra versión lo tiene.
+  function colorEquivalente(q, nombre) {
+    var n = String(nombre || "").toLowerCase().trim();
+    var cols = (q.colores || []).map(function (c) { return String(c[0]).toLowerCase().trim(); });
+    var i = n ? cols.indexOf(n) : -1;
+    return i > -1 ? i : null;
+  }
+  function selectorVersion(p) {
+    var q = pareja(p);
+    if (!q) return "";
+    var h = p.genero === "Hombre" ? p : q, m = p.genero === "Hombre" ? q : p;
+    return '<div class="tx-gswitch" role="group" aria-label="Versión">' + [h, m].map(function (x) {
+      return '<button type="button" data-version="' + x.id + '" aria-pressed="' + (x === p) + '">' + esc(x.genero) + "</button>";
+    }).join("") + "</div>";
+  }
+
   /* --- Ficha del producto ---------------------------------------------- */
   var caja, actual, colorSel;
   function crearCaja() {
@@ -255,6 +297,12 @@
       var t = e.target;
       if (t.closest(".tx-guia")) { caja.querySelector(".tx-guia").hidden = true; return; }
       if (t === caja || t.classList.contains("tx-cerrar")) return cerrar();
+      var v = t.closest("[data-version]");
+      if (v) {
+        var q = pareja(actual);
+        if (q && String(q.id) === v.getAttribute("data-version")) abrir(q, colorEquivalente(q, colorSel), true);
+        return;
+      }
       var c = t.closest("[data-color]");
       if (c) return elegirColor(+c.getAttribute("data-color"));
       var th = t.closest("[data-foto]");
@@ -274,7 +322,7 @@
     });
     document.body.appendChild(caja);
   }
-  function abrir(p, color) {
+  function abrir(p, color, mismaVista) {
     if (!p) return;
     if (!caja) crearCaja();
     actual = p;
@@ -285,6 +333,7 @@
       '<div class="tx-fotos"><div class="tx-foto"><img alt=""></div><div class="tx-miniaturas"></div></div>' +
       '<div class="tx-info">' +
         "<h2>" + esc(p.nombre) + "</h2>" +
+        selectorVersion(p) +
         (p.desc ? '<p class="tx-desc">' + esc(p.desc) + "</p>" : "") +
         ((p.colores || []).length ? '<h3>Color: <span class="tx-color-nombre"></span></h3><div class="tx-colores">' +
           p.colores.map(function (c, i) { return '<button type="button" data-color="' + i + '" title="' + esc(c[0]) + '" aria-label="' + esc(c[0]) + '"><i style="background:' + esc(fondoColor(c)) + '"></i></button>'; }).join("") + "</div>" +
@@ -304,8 +353,15 @@
     elegirColor(color == null ? colorInicial(p) : color);
     caja.classList.add("abierto");
     document.documentElement.classList.add("tx-sin-scroll");
-    caja.querySelector(".tx-panel").scrollTop = 0;
-    caja.querySelector(".tx-panel").focus();
+    var panel = caja.querySelector(".tx-panel");
+    if (mismaVista) {
+      // Cambio de versión: se queda en el mismo lugar y con el foco en el selector.
+      var b = caja.querySelector('[data-version="' + p.id + '"]');
+      if (b) b.focus();
+    } else {
+      panel.scrollTop = 0;
+      panel.focus();
+    }
     if (history.replaceState) history.replaceState(null, "", "#p-" + p.id);
   }
   function cerrar() {
