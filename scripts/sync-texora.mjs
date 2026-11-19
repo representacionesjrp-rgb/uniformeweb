@@ -290,7 +290,10 @@ async function main() {
   console.log('Leyendo subcategorías…');
   const subOf = new Map();
   for (const c of SUBCATS) {
-    const j = await get(`${BASE}/${c}-x?resultsPerPage=999`, true);
+    // Una subcategoría que Texora bloquea o retiró no detiene la sincronización.
+    let j;
+    try { j = await get(`${BASE}/${c}-x?resultsPerPage=999`, true, 2); }
+    catch (e) { console.warn('Subcategoría omitida:', e.message); continue; }
     const label = String(j.label || '').replace(/^Categoría:\s*/, '');
     for (const id of listing(j.rendered_products || '').keys()) {
       if (!subOf.has(id)) subOf.set(id, []);
