@@ -809,3 +809,54 @@ html.uwc-vendedor .tx-ficha, html.uwc-vendedor .uwc-capa, html.uwc-vendedor .uwc
 .uwc-res-nota { padding: 8px 6px; color: var(--suave); font-size: .85rem; }
 .uwc-nombre > span { color: var(--texto); font-weight: 600; line-height: 1.3; }
 span.uwc-foto { pointer-events: none; }
+
+/* =========================================================================
+   Modo vendedor · "Mi cotización" a pantalla completa (misma ventana),
+   con el mismo esquema de la página "Mi cotización" de laropa.cl:
+   título grande, productos a la izquierda y resumen fijo a la derecha.
+   ========================================================================= */
+.uwc-capa.uwc-pagina { background: var(--uwc-suave); }
+.uwc-pagina .uwc-panel { position: absolute; inset: 0; width: auto; display: block; overflow-y: auto; overscroll-behavior: contain; background: var(--uwc-suave); box-shadow: none; transform: translateY(12px); transition: transform .25s ease; }
+.uwc-pagina.abierto .uwc-panel { transform: none; }
+.uwc-pag-ancho { max-width: var(--ancho); margin: 0 auto; padding: 0 16px; }
+.uwc-pagina .uwc-cab { display: block; padding: 18px 0 30px; }
+.uwc-volver { border: 0; background: rgba(255,255,255,.18); color: #fff; font: inherit; font-weight: 600; font-size: .9rem; padding: .4em 1em; border-radius: 999px; cursor: pointer; }
+.uwc-volver:hover { background: rgba(255,255,255,.32); }
+.uwc-cab-tit { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; margin-top: 18px; }
+.uwc-cab-tit h1 { color: #fff; margin: 0 0 .15em; font-size: clamp(2rem, 5vw, 3.2rem); text-transform: uppercase; letter-spacing: -.01em; }
+.uwc-cab-tit h1 span { color: #ffe27a; }
+.uwc-cab-tit p { margin: 0; max-width: 60ch; font-size: .95rem; opacity: .92; }
+.uwc-pag { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; padding-top: 28px; padding-bottom: 48px; }
+.uwc-pagina .uwc-cuerpo { overflow: visible; padding: 0; background: none; }
+.uwc-lista-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.uwc-lista-cab h2, .uwc-pagina .uwc-pie h2 { font-size: 1.25rem; margin: 0; }
+.uwc-lista-cab small { font-size: .85rem; font-weight: 600; color: var(--suave); margin-left: .3em; }
+.uwc-pagina .uwc-linea { grid-template-columns: 104px 1fr; padding: 14px; gap: 16px; }
+.uwc-pagina .uwc-lp { font-size: .92rem; }
+@media (min-width: 900px) {
+  .uwc-pagina .uwc-datos { grid-template-columns: minmax(0, 1fr) 130px 200px; align-items: center; column-gap: 18px; }
+  .uwc-pagina .uwc-nombre { grid-column: 1; grid-row: 1; }
+  .uwc-pagina .uwc-lp { grid-column: 1; grid-row: 2; margin: 0; }
+  .uwc-pagina .uwc-total { grid-column: 2; grid-row: 1 / span 2; }
+  .uwc-pagina .uwc-fila { grid-column: 3; grid-row: 1 / span 2; justify-content: flex-end; }
+  .uwc-pagina .uwc-total input { max-width: none; width: 100%; }
+}
+.uwc-pagina .uwc-pie { position: sticky; top: 20px; display: grid; gap: 14px; border: 0; border-radius: 18px; padding: 24px; background: #fff; box-shadow: 0 10px 34px rgba(30, 10, 60, .1); border-top: 5px solid var(--uwc-2); }
+.uwc-pagina .uwc-resumen { margin: 0; }
+.uwc-pagina .uwc-est { margin: 0; font-size: .95rem; }
+.uwc-pagina .uwc-est .uwc-est-t { font-size: 1.2rem; }
+.uwc-pagina .uwc-obs-c { margin: 0; }
+.uwc-pagina .uwc-vacio { background: #fff; border-radius: 18px; padding: 3rem 1.5rem; box-shadow: 0 2px 10px rgba(30, 10, 60, .06); }
+.uwc-pagina .uwc-vacio .btn { background: var(--uwc-grad); margin-top: .5rem; }
+@media (max-width: 900px) {
+  .uwc-pag { grid-template-columns: 1fr; gap: 20px; }
+  .uwc-pagina .uwc-pie { position: static; }
+}
+@media (max-width: 560px) {
+  .uwc-pagina .uwc-linea { grid-template-columns: 72px 1fr; gap: 12px; }
+  .uwc-pagina .uwc-cab { padding-bottom: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .uwc-pagina .uwc-panel { transition: none; } }
+.uwc-pagina .uwc-resumen .uwc-res-est { display: none; } /* el total ya está en el recuadro de abajo */
+.uwc-pagina .uwc-pie:empty { display: none; }
+.uwc-pag:has(> .uwc-pie:empty) { grid-template-columns: minmax(0, 1fr); }
