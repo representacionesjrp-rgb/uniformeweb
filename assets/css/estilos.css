@@ -783,3 +783,15 @@ html.uwc-vendedor body { padding-top: 34px; }
 html.uwc-vendedor #cabecera { top: 34px; }
 html.uwc-vendedor .tx-ficha, html.uwc-vendedor .uwc-capa, html.uwc-vendedor .uwc-cant-capa, html.uwc-vendedor .visor { top: 34px; }
 @media (max-width: 560px) { .uwc-franja span { display: none; } }
+
+/* Grilla de stock color x talla (solo vendedores con sesión) */
+.uwc-grilla { margin: 12px 0; }
+.uwc-grilla h3 { font-size: .95rem; margin: 0 0 6px; }
+.uwc-grilla > div { overflow-x: auto; }
+.uwc-grilla table { border-collapse: collapse; font-size: .8rem; min-width: 100%; }
+.uwc-grilla th, .uwc-grilla td { padding: 4px 7px; border: 1px solid color-mix(in srgb, var(--uwc-1, #8c0fb8) 16%, transparent); text-align: center; white-space: nowrap; }
+.uwc-grilla thead th { background: var(--uwc-suave, #f7effb); }
+.uwc-grilla tbody th { text-align: left; font-weight: 600; }
+.uwc-grilla tr.actual { background: color-mix(in srgb, var(--uwc-1, #8c0fb8) 7%, #fff); }
+.uwc-grilla td.poco { color: #b45309; font-weight: 600; }
+.uwc-grilla td.cero { color: #9ca3af; }
