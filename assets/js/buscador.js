@@ -318,7 +318,7 @@
       if (n) {
         html += '<div class="tx-grid bq-grid">' + r.productos.map(function (p) {
           var e = estado(p);
-          return '<article class="tx-card"><a class="tx-card-img" href="' + urlProducto(p) + '" aria-label="Ver ficha de ' + esc(p.nombre) + '">' +
+          return '<article class="tx-card" data-id="' + esc(p.id) + '"><a class="tx-card-img" href="' + urlProducto(p) + '" aria-label="Ver ficha de ' + esc(p.nombre) + '">' +
               '<img src="' + foto(p, "large_default") + '" alt="' + esc(p.nombre) + '" loading="lazy">' +
               '<span class="tx-estado tx-' + e[0] + '">' + esc(e[1]) + "</span>" +
               (p.genero ? '<span class="tx-genero">' + esc(p.genero) + "</span>" : "") + "</a>" +
